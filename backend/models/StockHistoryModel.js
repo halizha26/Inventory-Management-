@@ -21,6 +21,16 @@ const stockHistorySchema = new mongoose.Schema(
             type: Number,
             required: true,
         },
+        // --- TAMBAHAN: Kolom Harga ---
+        unitPrice: {
+            type: Number,
+            default: 0, // Default 0 supaya transaksi Stock Out (yang gak ada harga) gak error
+        },
+        totalPrice: {
+            type: Number,
+            default: 0,
+        },
+        // -----------------------------
         reason: {
             type: String, // e.g., "Purchase", "Sale", "Damage", "Return"
             required: false,

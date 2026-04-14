@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -17,12 +17,45 @@ import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// --- TAMBAHAN IMPORT SERVICE ---
+import productService from '../../services/productService'; 
+
 const Sidebar = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth();
+  
+  // --- STATE UNTUK MENYIMPAN JUMLAH LOW STOCK ---
+  const [lowStockCount, setLowStockCount] = useState(0);
+
+  // --- EFEK UNTUK MENGAMBIL DATA PRODUK & MENGHITUNG LOW STOCK ---
+  useEffect(() => {
+    let isMounted = true; // Mencegah memory leak jika komponen dilepas
+    
+    const fetchProducts = async () => {
+      try {
+        const data = await productService.getAll();
+        const products = data.products || [];
+        // Hitung produk yang quantity-nya <= 10 (standar Low Stock)
+        const count = products.filter(p => p.quantity <= 10).length;
+        if (isMounted) setLowStockCount(count);
+      } catch (error) {
+        console.error("Failed to fetch products for sidebar:", error);
+      }
+    };
+
+    // Ambil data saat pertama kali dimuat
+    fetchProducts();
+    
+    // (Opsional) Polling setiap 30 detik agar datanya selalu update
+    const interval = setInterval(fetchProducts, 30000); 
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const links = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'staff', 'finance', 'management'] },
-    { name: 'Category', path: '/categories', icon: BoxesIcon, roles: ['admin', 'staff', 'finance', 'management'] },
     { name: 'Products', path: '/products', icon: Package, roles: ['admin', 'staff', 'finance', 'management'] },
     { name: 'Request Stock In', path: '/stock-in', icon: TrendingUp, roles: ['admin', 'staff', 'finance', 'management'] },
     { name: 'Request Stock Out', path: '/stock-out', icon: TrendingDown, roles: ['admin', 'staff', 'finance', 'management'] },
@@ -42,7 +75,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           <div className="p-2 bg-brand-600 rounded-lg">
             <PieChart className="text-white w-6 h-6" />
           </div>
-          <span className="text-xl font-bold text-gray-900 tracking-tight">Invento</span>
+          <span className="text-xl font-bold text-gray-900 tracking-tight">Inventory</span>
         </div>
         <button onClick={onClose} className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
           <X size={20} />
@@ -57,14 +90,24 @@ const Sidebar = ({ isOpen, onClose }) => {
             to={link.path}
             onClick={() => window.innerWidth < 1024 && onClose()}
             className={({ isActive }) => clsx(
-              "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium",
+              "flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 font-medium",
               isActive
                 ? "bg-brand-50 text-brand-700 shadow-sm"
                 : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             )}
           >
-            <link.icon size={20} className={clsx({ "text-brand-600": true })} />
-            {link.name}
+            <div className="flex items-center gap-3">
+               <link.icon size={20} className={clsx({ "text-brand-600": true })} />
+               <span>{link.name}</span>
+            </div>
+
+            {/* --- TAMBAHAN BADGE KUNING KHUSUS UNTUK MENU LOW STOCK --- */}
+            {link.name === 'Low Stock' && lowStockCount > 0 && (
+               <span className="inline-flex items-center justify-center px-2 py-0.5 ml-2 text-xs font-bold leading-none text-yellow-800 bg-yellow-200 rounded-full animate-pulse">
+                 {lowStockCount}
+               </span>
+            )}
+
           </NavLink>
         ))}
       </nav>

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -13,19 +13,32 @@ import productService from '../../services/productService';
 const CATEGORIES = ['Logistik Material', 'Learning Material', 'Office Asset'];
 const CURRENCIES = ['IDR', 'USD'];
 
+// --- LIST SUPPLIER REGULAR (Bisa kamu tambah di sini) ---
+const REGULAR_SUPPLIERS = [
+  'CELEMI', 
+  'PADUKA', 
+];
+
 const schema = yup.object({
-  name: yup.string().required('Product name is required'),
+  // --- INI MANTRA VALIDASI HURUF KAPITALNYA ---
+  name: yup.string()
+    .required('Product name is required')
+    .matches(/^[A-Z]/, 'Product name must start with a capital letter'),
+  // --------------------------------------------
   sku: yup.string().required('SKU is required'),
   category: yup.string().required('Category is required'),
   quantity: yup.number().typeError('Quantity must be a number').min(0, 'Min 0').required('Quantity is required'),
   currency: yup.string().required('Currency is required'),
   price: yup.number().typeError('Price must be a number').min(0, 'Min 0').required('Price is required'),
   description: yup.string(),
-  supplier: yup.string(),
+  supplier: yup.string().required('Supplier is required'), 
 }).required();
 
 const ProductModal = ({ isOpen, onClose, productToEdit, onSuccess }) => {
-  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm({
+  // State untuk melacak tipe supplier: 'regular' atau 'adhoc'
+  const [supplierType, setSupplierType] = useState('regular');
+
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm({
     resolver: yupResolver(schema),
     defaultValues: { currency: 'IDR' },
   });
@@ -35,8 +48,16 @@ const ProductModal = ({ isOpen, onClose, productToEdit, onSuccess }) => {
       const fields = ['name', 'sku', 'category', 'quantity', 'price', 'description', 'supplier'];
       fields.forEach(field => setValue(field, productToEdit[field]));
       setValue('currency', productToEdit.currency || 'IDR');
+      
+      // Cek apakah supplier lama ada di list regular, jika tidak set ke adhoc
+      if (REGULAR_SUPPLIERS.includes(productToEdit.supplier)) {
+        setSupplierType('regular');
+      } else {
+        setSupplierType('adhoc');
+      }
     } else {
-      reset({ currency: 'IDR' });
+      reset({ currency: 'IDR', supplier: '' });
+      setSupplierType('regular');
     }
   }, [productToEdit, reset, setValue, isOpen]);
 
@@ -88,7 +109,6 @@ const ProductModal = ({ isOpen, onClose, productToEdit, onSuccess }) => {
                   <Input label="Product Name" placeholder="e.g. Wireless Mouse" error={errors.name} {...register('name')} />
                   <Input label="SKU" placeholder="e.g. WM-001" error={errors.sku} {...register('sku')} />
 
-                  {/* Category */}
                   <div className="flex flex-col gap-1">
                     <label className="block text-sm font-medium text-gray-700">Category</label>
                     <select
@@ -101,11 +121,52 @@ const ProductModal = ({ isOpen, onClose, productToEdit, onSuccess }) => {
                     {errors.category && <p className="text-xs text-red-500">{errors.category.message}</p>}
                   </div>
 
-                  <Input label="Supplier" placeholder="e.g. Tech Corp" error={errors.supplier} {...register('supplier')} />
                   <Input label="Quantity" type="number" placeholder="0" error={errors.quantity} {...register('quantity')} />
 
+                  {/* --- BAGIAN SUPPLIER BARU --- */}
+                  <div className="flex flex-col gap-1 md:col-span-2 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-bold text-gray-700">Supplier Information</label>
+                      <div className="flex bg-white border rounded-lg p-1 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => { setSupplierType('regular'); setValue('supplier', ''); }}
+                          className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${supplierType === 'regular' ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >
+                          Regular
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setSupplierType('adhoc'); setValue('supplier', ''); }}
+                          className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${supplierType === 'adhoc' ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >
+                          Adhoc
+                        </button>
+                      </div>
+                    </div>
+
+                    {supplierType === 'regular' ? (
+                      <select
+                        className={`w-full px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-brand-200 focus:border-brand-500 focus:outline-none transition-all ${errors.supplier ? 'border-red-400' : 'border-gray-300'}`}
+                        {...register('supplier')}
+                      >
+                        <option value="">-- Choose Registered Supplier --</option>
+                        {REGULAR_SUPPLIERS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    ) : (
+                      <Input 
+                        placeholder="Type supplier name manually..." 
+                        error={errors.supplier} 
+                        {...register('supplier')} 
+                      />
+                    )}
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      {supplierType === 'regular' ? "*Choose from permanent partners." : "*Gunakan untuk supplier sekali beli."}
+                    </p>
+                  </div>
+
                   {/* Price with currency dropdown */}
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">Price</label>
                     <div className="flex gap-2">
                       <select
@@ -131,7 +192,7 @@ const ProductModal = ({ isOpen, onClose, productToEdit, onSuccess }) => {
                 <div className="w-full">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <textarea
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-500 focus:outline-none transition-all min-h-[100px]"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-500 focus:outline-none transition-all min-h-[80px]"
                     placeholder="Enter product description..."
                     {...register('description')}
                   />

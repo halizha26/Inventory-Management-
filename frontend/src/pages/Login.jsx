@@ -5,11 +5,14 @@ import * as yup from 'yup';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { LayoutDashboard } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
+
+// 1. IMPORT LOGO KAMU DI SINI
+// Pastikan nama file dan path-nya benar (asumsi file ada di src/assets/)
+import myLogo from '../assets/logo-footer.png'; 
 
 const schema = yup.object({
   email: yup.string().email('Invalid email address').required('Email is required'),
@@ -48,8 +51,16 @@ const Login = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
+                className="flex flex-col items-center" // Tambahan agar logo selalu di tengah
             >
-                <LayoutDashboard size={80} className="mx-auto mb-6 text-brand-200" />
+                
+                {/* 2. TAG GAMBAR UNTUK LOGO */}
+                <img 
+                  src={myLogo} 
+                  alt="Company Logo" 
+                  className="w-64 h-auto mb-8 object-contain drop-shadow-lg" 
+                />
+                
                 <h1 className="text-4xl font-bold mb-4">Inventory Management</h1>
                 <p className="text-xl text-brand-100 max-w-md mx-auto">
                     Streamline your stock, manage products, and track real-time analytics with ease.

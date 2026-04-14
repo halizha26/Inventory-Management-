@@ -60,6 +60,16 @@ const Products = () => {
   const selectedProducts = products.filter(p => selectedIds.includes(p._id));
   const totalSelectedStock = selectedProducts.reduce((sum, p) => sum + (p.quantity || 0), 0);
 
+  // --- PERBAIKAN: Math.round() ditambahkan di sini agar IDR bulat ---
+  const totalSelectedPriceIDR = selectedProducts
+    .filter(p => (p.currency || (['Logistik Material', 'Office Asset'].includes(p.category) ? 'IDR' : 'USD')) === 'IDR')
+    .reduce((sum, p) => sum + Math.round(Number(p.price || 0)), 0);
+
+  // --- PERBAIKAN: Memastikan hitungan USD tetap dalam format angka sebelum diformat ---
+  const totalSelectedPriceUSD = selectedProducts
+    .filter(p => (p.currency || (['Logistik Material', 'Office Asset'].includes(p.category) ? 'IDR' : 'USD')) === 'USD')
+    .reduce((sum, p) => sum + Number(p.price || 0), 0);
+
   const filteredProducts = products.filter(
     (p) =>
       (p.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -68,9 +78,14 @@ const Products = () => {
   );
 
   const formatPrice = (product) => {
-    const currency = product.currency || (product.category === 'Logistik Material' ? 'IDR' : 'USD');
-    if (currency === 'IDR') return `Rp ${Number(product.price).toLocaleString('id-ID')}`;
-    return `$ ${Number(product.price).toFixed(2)}`;
+    const currency = product.currency || (['Logistik Material', 'Office Asset'].includes(product.category) ? 'IDR' : 'USD');
+    
+    if (currency === 'IDR') {
+      const roundedPrice = Math.round(Number(product.price));
+      return `Rp ${roundedPrice.toLocaleString('id-ID')}`;
+    }
+    
+    return `$ ${Number(product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   return (
@@ -102,10 +117,27 @@ const Products = () => {
 
       {/* Summary bar */}
       {selectedIds.length > 0 && (
-        <div className="bg-brand-50 border border-brand-200 rounded-xl px-6 py-3 flex flex-wrap gap-6 items-center text-sm">
+        <div className="bg-brand-50 border border-brand-200 rounded-xl px-6 py-3 flex flex-wrap gap-4 items-center text-sm transition-all duration-300">
           <span className="font-semibold text-brand-700">{selectedIds.length} product(s) selected</span>
-          <span className="text-gray-700">Total Stock: <span className="font-bold">{totalSelectedStock} units</span></span>
-          <button onClick={() => setSelectedIds([])} className="ml-auto text-xs text-gray-400 hover:text-red-500">Clear selection</button>
+          <span className="text-gray-700 border-l border-brand-200 pl-4">
+            Total Stock: <span className="font-bold">{totalSelectedStock} units</span>
+          </span>
+          <span className="text-gray-700 border-l border-brand-200 pl-4 flex gap-3">
+            Total Price: 
+            {totalSelectedPriceIDR > 0 && (
+              <span className="font-bold text-emerald-600">Rp {totalSelectedPriceIDR.toLocaleString('id-ID')}</span>
+            )}
+            {totalSelectedPriceUSD > 0 && (
+              // --- PERBAIKAN: maximumFractionDigits ditambahkan untuk USD ---
+              <span className="font-bold text-blue-600">$ {totalSelectedPriceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            )}
+            {totalSelectedPriceIDR === 0 && totalSelectedPriceUSD === 0 && (
+              <span className="font-bold text-gray-500">0</span>
+            )}
+          </span>
+          <button onClick={() => setSelectedIds([])} className="ml-auto text-xs font-medium text-gray-500 hover:text-red-600 transition-colors">
+            Clear selection
+          </button>
         </div>
       )}
 
@@ -126,6 +158,7 @@ const Products = () => {
                 <th className="px-6 py-4">Product Name</th>
                 <th className="px-6 py-4">Ref/SKU</th>
                 <th className="px-6 py-4">Category</th>
+                <th className="px-6 py-4">Supplier</th>
                 <th className="px-6 py-4">Stock</th>
                 <th className="px-6 py-4">Price</th>
                 <th className="px-6 py-4">Status</th>
@@ -135,7 +168,7 @@ const Products = () => {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan="9" className="px-6 py-8 text-center text-gray-500">
                     <div className="flex justify-center items-center gap-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand-600" />
                       Loading products...
@@ -144,9 +177,7 @@ const Products = () => {
                 </tr>
               ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
-                    No products found. Add your first product!
-                  </td>
+                  <td colSpan="9" className="px-6 py-12 text-center text-gray-500">No products found.</td>
                 </tr>
               ) : (
                 filteredProducts.map((product) => (
@@ -161,13 +192,16 @@ const Products = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900">{product.name}</div>
-                      <div className="text-xs text-gray-500 truncate max-w-[200px]">{product.description}</div>
+                      <div className="text-xs text-gray-500 truncate max-w-[150px]">{product.description}</div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 font-mono">{product.sku}</td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700">
                         {product.category}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 italic">
+                      {product.supplier || '—'}
                     </td>
                     <td className="px-6 py-4">
                       <div className={`font-medium ${product.quantity <= 10 ? "text-red-600" : "text-green-600"}`}>
@@ -179,22 +213,20 @@ const Products = () => {
                       {formatPrice(product)}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium
                         ${product.status === "pending" ? "bg-amber-100 text-amber-700" : ""}
-                        ${product.status === "validated" ? "bg-blue-300 text-blue-700" : ""}
-                        ${product.status === "approved" ? "bg-green-300 text-green-700" : ""}
-                        ${product.status === "rejected" ? "bg-red-600 text-white" : ""}
+                        ${product.status === "approved" ? "bg-green-100 text-green-700" : ""}
                       `}>
                         {product.status?.toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => handleEdit(product)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
-                          <Edit2 size={18} />
+                        <button onClick={() => handleEdit(product)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                          <Edit2 size={16} />
                         </button>
-                        <button onClick={() => handleDelete(product._id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                          <Trash2 size={18} />
+                        <button onClick={() => handleDelete(product._id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -203,13 +235,6 @@ const Products = () => {
               )}
             </tbody>
           </table>
-        </div>
-        <div className="p-4 border-t border-gray-200 bg-gray-50 text-sm text-gray-500 flex justify-between items-center">
-          <span>Showing {filteredProducts.length} results</span>
-          <div className="flex gap-2">
-            <button className="px-3 py-1 border rounded bg-white disabled:opacity-50" disabled>Prev</button>
-            <button className="px-3 py-1 border rounded bg-white disabled:opacity-50" disabled>Next</button>
-          </div>
         </div>
       </div>
 

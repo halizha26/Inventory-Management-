@@ -14,7 +14,8 @@ const productSchema = new mongoose.Schema(
         },
         sku: {
             type: String,
-            required: false,
+            required: [true, "Please add an SKU"], // <--- Wajib diisi
+            unique: true, // <--- SKU harus unik, tidak boleh sama
             trim: true,
         },
         category: {
