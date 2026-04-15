@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import StockModal from '../components/stock/StockModal';
 import StockPages from './StockPages';
-import Button from '../components/common/Button';
-import { TrendingUp } from 'lucide-react';
+import { Plus, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const StockIn = () => {
@@ -12,42 +11,81 @@ const StockIn = () => {
 
     return (
         <div className="space-y-6">
+            {/* --- HEADER SECTION --- */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                        <span className="p-2 bg-green-100 text-green-600 rounded-lg">
+                        <span className="p-2 bg-green-100 text-green-600 rounded-lg shadow-sm">
                             <TrendingUp size={24} />
                         </span>
-                       Request  Stock In
+                        Permintaan Stok Masuk
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 mt-1.5 uppercase font-semibold tracking-tight">
                         {user?.role === 'admin'
-                            ? 'Full access: input, approve, and acknowledge Request Stock In requests.'
+                            ? 'Akses Penuh: Input, Setujui, dan Konfirmasi permintaan stok masuk.'
                             : canInput
-                            ? 'Submit a new stock entry request.'
+                            ? 'Kirim permintaan pemasukan stok barang baru.'
                             : user?.role === 'finance'
-                                ? 'Review and approve pending Request Stock In requests below.'
-                                : 'Acknowledge approved Request Stock In requests below.'}
+                                ? 'Periksa dan setujui permintaan stok masuk di bawah ini.'
+                                : 'Konfirmasi permintaan stok yang telah disetujui.'}
                     </p>
                 </div>
+
+                {/* TOMBOL NEW REQUEST: Ukuran Sama dengan Stock Out, Warna Hijau */}
                 {canInput && (
-                    <Button onClick={() => setIsOpen(true)} className="bg-green-600 hover:bg-green-700 flex items-center gap-2">
-                        <TrendingUp size={18} /> New Request Stock In
-                    </Button>
+                    <button 
+                        onClick={() => setIsOpen(true)} 
+                        className="
+                            bg-emerald-600 hover:bg-emerald-700 
+                            text-white font-black 
+                            flex items-center gap-2.5 
+                            px-6 py-3.5 
+                            rounded-xl 
+                            shadow-[0_4px_12px_0_rgba(16,185,129,0.3)] 
+                            transition-all 
+                            active:scale-95 
+                            uppercase 
+                            tracking-wide 
+                            text-sm
+                        "
+                    >
+                        <div className="bg-white/20 p-1 rounded-md">
+                            <Plus size={20} strokeWidth={3} />
+                        </div>
+                       Tambah Stok Baru
+                    </button>
                 )}
             </div>
 
-            {/* Approval flow info */}
-            <div className="flex items-center gap-3 text-sm text-gray-500 bg-white border border-gray-100 rounded-xl px-5 py-3 shadow-sm w-fit">
-                <FlowStep label="Staff" sub="Input"       active={canInput && user?.role !== 'admin'} adminActive={user?.role === 'admin'} />
-                <Arrow />
-                <FlowStep label="Finance" sub="Approve"   active={user?.role === 'finance'} adminActive={user?.role === 'admin'} />
-                <Arrow />
-                <FlowStep label="Management" sub="Acknowledge" active={user?.role === 'management'} adminActive={user?.role === 'admin'} />
+             {/* --- PANDUAN ALUR RINGKAS (Versi Clean) --- */}
+             <div className="bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-4">
+                <div className="flex items-center gap-2 min-w-max">
+                    <span className="w-1.5 h-4 bg-green-500 rounded-full"></span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Alur:</span>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2 md:gap-4 text-sm">
+                    <div className="flex items-center gap-2 text-slate-600 font-bold text-[11px] uppercase">
+                        <span className="w-5 h-5 rounded-full bg-slate-700 text-white flex items-center justify-center text-[10px]">1</span>
+                        Input (Staff)
+                    </div>
+                    <span className="text-slate-300">➔</span>
+                    <div className="flex items-center gap-2 text-blue-700 font-bold text-[11px] uppercase">
+                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">2</span>
+                        Setuju (Keuangan)
+                    </div>
+                    <span className="text-slate-300">➔</span>
+                    <div className="flex items-center gap-2 text-green-700 font-bold text-[11px] uppercase">
+                        <span className="w-5 h-5 rounded-full bg-green-600 text-white flex items-center justify-center text-[10px]">3</span>
+                        Konfirmasi (Manajemen)
+                    </div>
+                </div>
             </div>
 
+            {/* --- TABLE SECTION --- */}
             <StockPages type="IN" />
 
+            {/* --- MODAL --- */}
             <StockModal
                 isOpen={isOpen}
                 onClose={() => setIsOpen(false)}
@@ -57,14 +95,5 @@ const StockIn = () => {
         </div>
     );
 };
-
-const FlowStep = ({ label, sub, active, adminActive }) => (
-    <div className={`flex flex-col items-center px-3 py-1 rounded-lg ${adminActive ? 'bg-purple-50' : active ? 'bg-brand-50' : ''}`}>
-        <span className={`font-semibold text-xs ${adminActive ? 'text-purple-700' : active ? 'text-brand-700' : 'text-gray-700'}`}>{label}</span>
-        <span className={`text-xs ${adminActive ? 'text-purple-500' : active ? 'text-brand-500' : 'text-gray-400'}`}>{sub}</span>
-    </div>
-);
-
-const Arrow = () => <span className="text-gray-300 font-bold">→</span>;
 
 export default StockIn;

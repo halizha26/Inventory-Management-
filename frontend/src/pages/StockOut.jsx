@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import StockModal from '../components/stock/StockModal';
 import StockPages from './StockPages';
-import Button from '../components/common/Button';
-import { TrendingDown } from 'lucide-react';
+import { Minus, TrendingDown, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const StockOut = () => {
@@ -11,41 +10,85 @@ const StockOut = () => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="space-y-4"> {/* Mengurangi jarak utama dari space-y-6 ke space-y-4 */}
+            {/* --- HEADER & TOMBOL --- */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                        <span className="p-2 bg-red-100 text-red-600 rounded-lg">
+                        <span className="p-2 bg-red-100 text-red-600 rounded-lg shadow-sm">
                             <TrendingDown size={24} />
                         </span>
-                        Stock Out
+                        Permintaan Stok Keluar
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 mt-1.5 uppercase font-semibold tracking-tight">
                         {user?.role === 'admin'
-                            ? 'Full access: input, approve, and acknowledge Stock Out requests.'
+                            ? 'Akses Penuh: Input, Setujui, dan Konfirmasi permintaan.'
                             : canInput
-                            ? 'Submit a new stock removal request.'
+                            ? 'Kirim permintaan pengeluaran stok barang baru.'
                             : user?.role === 'management'
-                                ? 'Review and approve pending Stock Out requests below.'
-                                : 'Acknowledge approved Stock Out requests below.'}
+                                ? 'Periksa dan setujui permintaan stok keluar di bawah.'
+                                : 'Konfirmasi permintaan stok yang telah disetujui.'}
                     </p>
                 </div>
+                
                 {canInput && (
-                    <Button onClick={() => setIsOpen(true)} className="bg-red-600 hover:bg-red-700 flex items-center gap-2">
-                        <TrendingDown size={18} /> New Stock Out
-                    </Button>
+                    <button 
+                        onClick={() => setIsOpen(true)} 
+                        className="
+                            bg-red-600 hover:bg-red-700 
+                            text-white font-black 
+                            flex items-center gap-2.5 
+                            px-6 py-3.5 
+                            rounded-xl 
+                            shadow-[0_4px_12px_0_rgba(220,38,38,0.3)] 
+                            transition-all 
+                            active:scale-95 
+                            uppercase 
+                            tracking-wide 
+                            text-sm
+                        "
+                    >
+                        <div className="bg-white/20 p-1 rounded-md">
+                            <Minus size={20} strokeWidth={3} />
+                        </div>
+                        Keluarkan Stok
+                    </button>
                 )}
             </div>
 
-            {/* Approval flow info */}
-            <div className="flex items-center gap-3 text-sm text-gray-500 bg-white border border-gray-100 rounded-xl px-5 py-3 shadow-sm w-fit">
-                <FlowStep label="Staff" sub="Input"       active={canInput && user?.role !== 'admin'} adminActive={user?.role === 'admin'} />
-                <Arrow />
-                <FlowStep label="Management" sub="Approve"   active={user?.role === 'management'} adminActive={user?.role === 'admin'} />
-                <Arrow />
-                <FlowStep label="Finance" sub="Acknowledge" active={user?.role === 'finance'} adminActive={user?.role === 'admin'} />
+            {/* --- PANDUAN ALUR (STEPPER) - VERSI CLEAN & COMPACT --- */}
+            <div className="bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-4 lg:gap-8">
+                <div className="flex items-center gap-2 min-w-max">
+                    <span className="w-1.5 h-4 bg-red-500 rounded-full"></span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Alur Persetujuan:</span>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2 md:gap-3 text-sm w-full">
+                    {/* Step 1 */}
+                    <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                        <span className="w-5 h-5 rounded-full bg-slate-700 text-white flex items-center justify-center text-[10px] font-bold shadow-sm">1</span>
+                        <span className="font-bold text-slate-700 text-[11px] uppercase tracking-tight">Input <span className="hidden md:inline text-slate-400 font-medium">(Staff)</span></span>
+                    </div>
+                    
+                    <span className="text-slate-300 text-xs">➔</span>
+
+                    {/* Step 2 */}
+                    <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shadow-sm">2</span>
+                        <span className="font-bold text-blue-800 text-[11px] uppercase tracking-tight">Setuju <span className="hidden md:inline text-blue-500/80 font-medium">(Manajemen)</span></span>
+                    </div>
+
+                    <span className="text-slate-300 text-xs">➔</span>
+
+                    {/* Step 3 */}
+                    <div className="flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                        <span className="w-5 h-5 rounded-full bg-green-600 text-white flex items-center justify-center text-[10px] font-bold shadow-sm">3</span>
+                        <span className="font-bold text-green-800 text-[11px] uppercase tracking-tight">Konfirmasi <span className="hidden md:inline text-green-600/80 font-medium">(Keuangan)</span></span>
+                    </div>
+                </div>
             </div>
 
+            {/* --- COMPONENT TABEL (Filter Box sudah ada di dalam StockPages) --- */}
             <StockPages type="OUT" />
 
             <StockModal
@@ -57,14 +100,5 @@ const StockOut = () => {
         </div>
     );
 };
-
-const FlowStep = ({ label, sub, active, adminActive }) => (
-    <div className={`flex flex-col items-center px-3 py-1 rounded-lg ${adminActive ? 'bg-purple-50' : active ? 'bg-brand-50' : ''}`}>
-        <span className={`font-semibold text-xs ${adminActive ? 'text-purple-700' : active ? 'text-brand-700' : 'text-gray-700'}`}>{label}</span>
-        <span className={`text-xs ${adminActive ? 'text-purple-500' : active ? 'text-brand-500' : 'text-gray-400'}`}>{sub}</span>
-    </div>
-);
-
-const Arrow = () => <span className="text-gray-300 font-bold">→</span>;
 
 export default StockOut;

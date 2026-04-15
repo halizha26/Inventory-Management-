@@ -63,7 +63,7 @@ const Dashboard = () => {
         totalValueUSD: usdValue,
         totalValueIDR: idrValue,
         lowStock: lowStockCount,
-        movements: historyList.slice(0, 5), // Kembali ke 5 data saja biar simpel
+        movements: historyList.slice(0, 5),
         stockSummary: summary?.stockMovement || []
       });
     } catch (error) {
@@ -134,11 +134,12 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart Section */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+        {/* Chart Section - Ditambah min-w-0 untuk mencegah Grid pecah */}
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm min-w-0">
           <h3 className="font-bold text-gray-900 mb-6">Stock In vs Out</h3>
           <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            {/* REVISI: Tambah width 99%, minWidth, dan minHeight agar tidak freeze */}
+            <ResponsiveContainer width="100%" height={320}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
@@ -176,7 +177,6 @@ const Dashboard = () => {
             )}
           </div>
           
-          {/* Tombol View All Activity */}
           <Link 
             to="/reports" 
             className="w-full mt-6 py-2.5 text-sm font-medium text-brand-600 hover:bg-brand-50 rounded-xl transition-colors border border-brand-100 text-center"
@@ -199,10 +199,19 @@ const Dashboard = () => {
 };
 
 const StatCard = ({ title, value, icon, trend, isUp, color, warning, to }) => {
+  // REVISI: Tailwind butuh nama class yang lengkap, tidak bisa disambung dengan variabel
+  const bgColors = {
+    blue: 'bg-blue-50',
+    green: 'bg-green-50',
+    indigo: 'bg-indigo-50',
+    amber: 'bg-amber-50'
+  };
+  const bgColorClass = bgColors[color] || 'bg-gray-50';
+
   const cardContent = (
     <>
       <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-2xl bg-${color}-50`}>
+        <div className={`p-3 rounded-2xl ${bgColorClass}`}>
           {icon}
         </div>
         <div className={`flex items-center gap-1 text-xs font-bold ${isUp ? 'text-green-600' : 'text-red-500'}`}>

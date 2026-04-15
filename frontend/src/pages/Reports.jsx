@@ -63,15 +63,11 @@ const Reports = () => {
     );
   }
 
-  // Convert backend category stats to Recharts format
   const pieData = summary?.categoryStats?.map(item => ({
       name: item._id || 'Uncategorized',
       value: item.count
   })) || [];
 
-  // Logic for Stock Movement Chart
-  // In a real scenario, the backend might return time-series data.
-  // For now, we'll try to map what we have or show a placeholder if empty.
   const moveData = summary?.stockMovement?.map(item => ({
       name: item._id, // IN or OUT
       quantity: item.totalQuantity
@@ -127,11 +123,12 @@ const Reports = () => {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Stock Volume Chart */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm min-w-0">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Stock Volume Distribution</h3>
               <div className="h-80 w-full">
                 {moveData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    /* REVISI: Menambahkan minWidth dan minHeight agar Recharts tidak crash saat rendering */
+                    <ResponsiveContainer width="100%" height={320}>
                         <BarChart data={moveData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
@@ -156,11 +153,12 @@ const Reports = () => {
           </div>
 
           {/* Category Distribution */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm min-w-0">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Inventory by Category</h3>
               <div className="h-80 w-full">
                 {pieData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    /* REVISI: Menambahkan minWidth dan minHeight agar Recharts tidak crash saat rendering */
+                    <ResponsiveContainer width="99%" height="100%" minWidth={10} minHeight={300}>
                         <PieChart>
                             <Pie
                                 data={pieData}

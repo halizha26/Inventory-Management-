@@ -28,13 +28,12 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   // --- EFEK UNTUK MENGAMBIL DATA PRODUK & MENGHITUNG LOW STOCK ---
   useEffect(() => {
-    let isMounted = true; // Mencegah memory leak jika komponen dilepas
+    let isMounted = true; 
     
     const fetchProducts = async () => {
       try {
         const data = await productService.getAll();
         const products = data.products || [];
-        // Hitung produk yang quantity-nya <= 10 (standar Low Stock)
         const count = products.filter(p => p.quantity <= 10).length;
         if (isMounted) setLowStockCount(count);
       } catch (error) {
@@ -42,15 +41,14 @@ const Sidebar = ({ isOpen, onClose }) => {
       }
     };
 
-    // Ambil data saat pertama kali dimuat
     fetchProducts();
     
-    // (Opsional) Polling setiap 30 detik agar datanya selalu update
-    const interval = setInterval(fetchProducts, 30000); 
+    // 🛑 REVISI: Mematikan interval otomatis agar tidak bentrok dengan global loading
+    // const interval = setInterval(fetchProducts, 30000); 
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      // clearInterval(interval);
     };
   }, []);
 
@@ -60,7 +58,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { name: 'Request Stock In', path: '/stock-in', icon: TrendingUp, roles: ['admin', 'staff', 'finance', 'management'] },
     { name: 'Request Stock Out', path: '/stock-out', icon: TrendingDown, roles: ['admin', 'staff', 'finance', 'management'] },
     { name: 'Low Stock', path: '/low-stock', icon: AlertTriangle, roles: ['admin', 'staff', 'finance', 'management'] },
-    { name: 'Reports', path: '/reports', icon: FileText, roles: ['admin', 'finance', 'management'] },
+    // REVISI: Menambahkan 'staff' agar bisa melihat menu Reports
+    { name: 'Reports', path: '/reports', icon: FileText, roles: ['admin', 'staff', 'finance', 'management'] },
     { name: 'User Management', path: '/users', icon: Users2, roles: ['admin'] },
   ];
 
@@ -101,7 +100,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                <span>{link.name}</span>
             </div>
 
-            {/* --- TAMBAHAN BADGE KUNING KHUSUS UNTUK MENU LOW STOCK --- */}
+            {/* BADGE KUNING UNTUK LOW STOCK */}
             {link.name === 'Low Stock' && lowStockCount > 0 && (
                <span className="inline-flex items-center justify-center px-2 py-0.5 ml-2 text-xs font-bold leading-none text-yellow-800 bg-yellow-200 rounded-full animate-pulse">
                  {lowStockCount}
