@@ -7,20 +7,24 @@ const StockHistory = require("../models/StockHistoryModel");
 // @route   GET /api/reports/summary
 // @access  Private
 const getSummary = asyncHandler(async (req, res) => {
-    // Consistency is key: Use the same ID format across all controllers
-    const userId = req.user.id;
+    // Ambil SEMUA produk tanpa filter user agar data kantor muncul semua
+    const products = await Product.find({}); 
     
-    // 1. Fetch all products for this user
-    const products = await Product.find({ user: userId });
-    
-    // 2. Calculate Stats manually to ensure maximum reliability
-    let totalStoreValue = 0;
+    let totalStoreValueIDR = 0;
+    let totalStoreValueUSD = 0;
     const categoryMap = {};
     let outOfStockCount = 0;
     let lowStockCount = 0;
 
     products.forEach(p => {
-        totalStoreValue += (Number(p.price) || 0) * (Number(p.quantity) || 0);
+        const itemValue = (Number(p.price) || 0) * (Number(p.quantity) || 0);
+        
+        if (p.currency === 'USD') {
+            totalStoreValueUSD += itemValue;
+        } else {
+            totalStoreValueIDR += itemValue;
+        }
+
         if (p.quantity === 0) outOfStockCount++;
         if (p.quantity <= (p.minStock || 0) || p.quantity <= 10) lowStockCount++;
         
@@ -33,8 +37,7 @@ const getSummary = asyncHandler(async (req, res) => {
         count: categoryMap[name]
     }));
 
-    // 3. Fetch Stock Movement for current user
-    const history = await StockHistory.find({ user: userId });
+    const history = await StockHistory.find({}); 
     const movementMap = { 'IN': 0, 'OUT': 0 };
 
     history.forEach(h => {
@@ -43,22 +46,20 @@ const getSummary = asyncHandler(async (req, res) => {
         }
     });
 
-    const stockMovement = Object.keys(movementMap)
-        .map(type => ({
-            _id: type,
-            totalQuantity: movementMap[type]
-        }))
-        .filter(item => item.totalQuantity >= 0); // Keep 0s so the chart renders empty bars instead of "No data"
+    const stockMovement = Object.keys(movementMap).map(type => ({
+        _id: type,
+        totalQuantity: movementMap[type]
+    }));
 
     res.status(200).json({
         totalProducts: products.length,
-        totalStoreValue,
+        totalStoreValueIDR,
+        totalStoreValueUSD,
         outOfStock: outOfStockCount,
         lowStockCount,
         categoryStats,
         stockMovement,
-        // Diagnostic field to verify ownership
-        userId: userId
+        userId: req.user.id
     });
 });
 
@@ -66,8 +67,7 @@ const getSummary = asyncHandler(async (req, res) => {
 // @route   GET /api/reports/stock-movement
 // @access  Private
 const getStockMovement = asyncHandler(async (req, res) => {
-    const userId = req.user.id;
-    const history = await StockHistory.find({ user: userId });
+    const history = await StockHistory.find({}); 
     
     const stats = {
         'IN': { _id: 'IN', totalQuantity: 0, count: 0 },
@@ -84,7 +84,29 @@ const getStockMovement = asyncHandler(async (req, res) => {
     res.status(200).json(Object.values(stats));
 });
 
+// @desc    Get Detail Products by Category (FITUR DRILL-DOWN)
+// @route   GET /api/reports/category-detail/:category
+// @access  Private
+const getCategoryDetail = asyncHandler(async (req, res) => {
+    const { category } = req.params;
+    
+    // Cari produk berdasarkan kategori yang diklik (Case Insensitive)
+    const products = await Product.find({ 
+        category: { $regex: category, $options: 'i' } 
+    }).select('name quantity createdAt');
+
+    // Kita petakan datanya agar siap dipakai grafik batang (per bulan)
+    const chartData = products.map(p => ({
+        name: p.name,
+        stok: p.quantity,
+        bulan: new Date(p.createdAt).toLocaleString('id-ID', { month: 'short' })
+    }));
+
+    res.status(200).json(chartData);
+});
+
 module.exports = {
     getSummary,
-    getStockMovement
+    getStockMovement,
+    getCategoryDetail
 };

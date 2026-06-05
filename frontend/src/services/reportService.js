@@ -6,6 +6,13 @@ const reportService = {
     return response.data;
   },
 
+  // 👇 TAMBAHKAN FUNGSI INI UNTUK DRILL-DOWN CHART 👇
+  getCategoryDetail: async (category) => {
+    // encodeURIComponent penting supaya kategori yang ada spasinya tidak error
+    const response = await api.get(`/reports/category-detail/${encodeURIComponent(category)}`);
+    return response.data;
+  },
+
   getStockMovement: async (startDate, endDate) => {
     const response = await api.get('/reports/stock-movement', { params: { startDate, endDate } });
     return response.data;

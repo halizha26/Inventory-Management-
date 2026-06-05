@@ -9,88 +9,83 @@ const StockIn = () => {
     const canInput = ['staff', 'admin'].includes(user?.role);
     const [isOpen, setIsOpen] = useState(false);
 
+    const handleSuccess = () => {
+        setIsOpen(false);
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    };
+
     return (
-        <div className="space-y-6">
+        // 👇 PERBAIKAN 1: Hapus h-[calc...] yang mengunci layar, ganti dengan space-y-6 dan pb-12 agar lega
+        <div className="space-y-6 pb-12">
+            
             {/* --- HEADER SECTION --- */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-2">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                        <span className="p-2 bg-green-100 text-green-600 rounded-lg shadow-sm">
-                            <TrendingUp size={24} />
-                        </span>
+                    <h1 className="text-[26px] font-bold text-slate-800 flex items-center gap-3">
+                        <TrendingUp className="text-emerald-500" size={32} strokeWidth={2.5} />
                         Permintaan Stok Masuk
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1.5 uppercase font-semibold tracking-tight">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mt-2">
                         {user?.role === 'admin'
-                            ? 'Akses Penuh: Input, Setujui, dan Konfirmasi permintaan stok masuk.'
+                            ? 'Akses Penuh: Input, Setujui, dan Konfirmasi Permintaan.'
                             : canInput
-                            ? 'Kirim permintaan pemasukan stok barang baru.'
+                            ? 'Akses Penuh: Input dan Kirim Permintaan Pemasukan Stok.'
                             : user?.role === 'finance'
-                                ? 'Periksa dan setujui permintaan stok masuk di bawah ini.'
-                                : 'Konfirmasi permintaan stok yang telah disetujui.'}
+                                ? 'Akses: Periksa dan Setujui Permintaan Stok Masuk.'
+                                : 'Akses: Konfirmasi Permintaan Stok Yang Telah Disetujui.'}
                     </p>
                 </div>
 
-                {/* TOMBOL NEW REQUEST: Ukuran Sama dengan Stock Out, Warna Hijau */}
                 {canInput && (
                     <button 
                         onClick={() => setIsOpen(true)} 
-                        className="
-                            bg-emerald-600 hover:bg-emerald-700 
-                            text-white font-black 
-                            flex items-center gap-2.5 
-                            px-6 py-3.5 
-                            rounded-xl 
-                            shadow-[0_4px_12px_0_rgba(16,185,129,0.3)] 
-                            transition-all 
-                            active:scale-95 
-                            uppercase 
-                            tracking-wide 
-                            text-sm
-                        "
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-black flex items-center gap-2.5 px-6 py-3.5 rounded-xl shadow-[0_8px_16px_-6px_rgba(16,185,129,0.4)] transition-all active:scale-95 text-sm uppercase tracking-wider"
                     >
-                        <div className="bg-white/20 p-1 rounded-md">
-                            <Plus size={20} strokeWidth={3} />
-                        </div>
-                       Tambah Stok Baru
+                        <Plus size={20} strokeWidth={3} />
+                        Tambah Stok Baru
                     </button>
                 )}
             </div>
 
-             {/* --- PANDUAN ALUR RINGKAS (Versi Clean) --- */}
-             <div className="bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-4">
-                <div className="flex items-center gap-2 min-w-max">
-                    <span className="w-1.5 h-4 bg-green-500 rounded-full"></span>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Alur:</span>
+             {/* --- ALUR PERSETUJUAN --- */}
+             <div className="bg-white px-5 py-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-5 bg-emerald-500 rounded-full"></span>
+                    <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Alur Persetujuan:</span>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-2 md:gap-4 text-sm">
-                    <div className="flex items-center gap-2 text-slate-600 font-bold text-[11px] uppercase">
+                <div className="flex items-center flex-wrap gap-4 text-xs">
+                    <div className="flex items-center gap-2 text-slate-700 font-black uppercase tracking-wider">
                         <span className="w-5 h-5 rounded-full bg-slate-700 text-white flex items-center justify-center text-[10px]">1</span>
-                        Input (Staff)
+                        Input <span className="text-[10px] text-slate-400 font-bold">(Staff)</span>
                     </div>
-                    <span className="text-slate-300">➔</span>
-                    <div className="flex items-center gap-2 text-blue-700 font-bold text-[11px] uppercase">
+                    <span className="text-slate-200">➔</span>
+                    <div className="flex items-center gap-2 text-blue-600 font-black uppercase tracking-wider">
                         <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">2</span>
-                        Setuju (Keuangan)
+                        Setuju <span className="text-[10px] text-blue-400/70 font-bold">(Keuangan)</span>
                     </div>
-                    <span className="text-slate-300">➔</span>
-                    <div className="flex items-center gap-2 text-green-700 font-bold text-[11px] uppercase">
-                        <span className="w-5 h-5 rounded-full bg-green-600 text-white flex items-center justify-center text-[10px]">3</span>
-                        Konfirmasi (Manajemen)
+                    <span className="text-slate-200">➔</span>
+                    <div className="flex items-center gap-2 text-emerald-600 font-black uppercase tracking-wider">
+                        <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">3</span>
+                        Konfirmasi <span className="text-[10px] text-emerald-400/70 font-bold">(Manajemen)</span>
                     </div>
                 </div>
             </div>
 
-            {/* --- TABLE SECTION --- */}
-            <StockPages type="IN" />
+            {/* --- TABLE SECTION AREA --- */}
+            {/* 👇 PERBAIKAN 2: Hapus flex-1 min-h-0 yang membuat tabel tergencet */}
+            <div className="w-full">
+                <StockPages type="IN" />
+            </div>
 
             {/* --- MODAL --- */}
             <StockModal
                 isOpen={isOpen}
                 onClose={() => setIsOpen(false)}
                 type="IN"
-                onSuccess={() => { setIsOpen(false); window.location.reload(); }}
+                onSuccess={handleSuccess}
             />
         </div>
     );

@@ -21,7 +21,7 @@ const stockHistorySchema = new mongoose.Schema(
             type: Number,
             required: true,
         },
-        // --- TAMBAHAN: Kolom Harga ---
+        // --- TAMBAHAN: Kolom Harga & Mata Uang ---
         unitPrice: {
             type: Number,
             default: 0, // Default 0 supaya transaksi Stock Out (yang gak ada harga) gak error
@@ -29,6 +29,11 @@ const stockHistorySchema = new mongoose.Schema(
         totalPrice: {
             type: Number,
             default: 0,
+        },
+        // 👇 INI DIA KUNCI JAWABANNYA 👇
+        currency: {
+            type: String,
+            default: 'IDR', // Default Rupiah untuk data-data lama agar tidak error
         },
         // -----------------------------
         reason: {

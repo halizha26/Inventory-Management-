@@ -365,19 +365,7 @@ const ProductModal = ({ isOpen, onClose, productToEdit, onSuccess }) => {
                   )}
                 </div>
 
-                {/* 5. DESKRIPSI */}
-                <div className="bg-white p-6 rounded-[24px] border-2 border-slate-200 shadow-sm space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <FileText size={20} className="text-slate-400" />
-                        <label className="text-sm font-black text-slate-800 uppercase tracking-widest">Catatan Tambahan</label>
-                    </div>
-                    <textarea
-                        className="w-full px-5 py-4 border-2 border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:outline-none transition-all min-h-[100px] font-bold text-sm"
-                        placeholder="Tuliskan spesifikasi detail atau catatan untuk barang ini..."
-                        {...register('description')}
-                    />
-                </div>
-
+            
                 {/* FOOTER BUTTONS */}
                 <div className="flex flex-col md:flex-row items-center justify-end gap-4 pt-4 border-t-2 border-slate-200">
                   <button 

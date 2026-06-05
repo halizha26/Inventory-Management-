@@ -12,6 +12,8 @@ import Reports from './pages/Reports';
 import LowStock from './pages/LowStock';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
+import AdminPanel from './pages/AdminPanel'; // Sesuaikan dengan folder tempat kamu menyimpannya
+
 
 function App() {
   return (
@@ -30,6 +32,7 @@ function App() {
             <Route path="/stock-out" element={<StockOut />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/low-stock" element={<LowStock />} />
+            <Route path="/admin-panel" element={<AdminPanel />} />
             {/* Add more protected routes here later */}
           </Route>
         </Route>

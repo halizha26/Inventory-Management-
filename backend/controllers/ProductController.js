@@ -6,7 +6,8 @@ const StockHistory = require("../models/StockHistoryModel");
 // @route   POST /api/products
 // @access  Private (Admin)
 const createProduct = asyncHandler(async (req, res) => {
-    const { name, sku, category, price, quantity, minStock, description, supplier } = req.body;
+    // 👇 PERBAIKAN 1: Tambahkan 'currency' di sini agar ditangkap dari Frontend
+    const { name, sku, category, price, currency, quantity, minStock, description, supplier } = req.body;
 
     const productExists = await Product.findOne({ name, user: req.user.id });
     if (productExists) {
@@ -20,6 +21,7 @@ const createProduct = asyncHandler(async (req, res) => {
         sku,
         category,
         price,
+        currency, // 👇 PERBAIKAN 2: Simpan 'currency' ke Database
         quantity,
         minStock,
         description,
@@ -64,7 +66,8 @@ const getProductById = asyncHandler(async (req, res) => {
 // @route   PUT /api/products/:id
 // @access  Private (Admin)
 const updateProduct = asyncHandler(async (req, res) => {
-    const { name, sku, category, price, quantity, minStock, description, supplier } = req.body;
+    // 👇 PERBAIKAN 3: Tambahkan 'currency' juga saat update data
+    const { name, sku, category, price, currency, quantity, minStock, description, supplier } = req.body;
     const product = await Product.findOne({ _id: req.params.id, user: req.user.id });
 
     if (!product) {
@@ -86,14 +89,12 @@ const updateProduct = asyncHandler(async (req, res) => {
     product.sku = sku !== undefined ? sku : product.sku;
     product.category = category || product.category;
     product.price = price !== undefined ? price : product.price;
+    product.currency = currency || product.currency; // 👇 PERBAIKAN 4: Update data 'currency'
     product.minStock = minStock !== undefined ? minStock : product.minStock;
     product.description = description || product.description;
     product.supplier = supplier || product.supplier;
 
     // Note: Quantity is usually updated via stock operations, but allowing manual override here implementation choice.
-    // For strict inventory, maybe disable direct quantity update? 
-    // Allowing it for correction purposes, but logging difference would be ideal.
-    // For simplicity following user plan likely expects simple CRUD.
     if (quantity !== undefined) {
         const diff = Number(quantity) - product.quantity;
         if (diff !== 0) {

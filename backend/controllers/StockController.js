@@ -1,6 +1,8 @@
 const asyncHandler = require("../utils/AsyncHandler");
 const Product = require("../models/ProductModel");
 const StockHistory = require("../models/StockHistoryModel");
+// 👇 TAMBAHAN: Import Model Notifikasi yang baru kita buat
+const Notification = require("../models/NotificationModel"); 
 const nodemailer = require("nodemailer"); 
 
 // --- KONFIGURASI EMAIL (NODEMAILER) ---
@@ -31,7 +33,11 @@ const sendNotificationEmail = async (toEmail, subject, htmlContent) => {
 
 // @desc    Stock In - Staff input (status: pending)
 const stockIn = asyncHandler(async (req, res) => {
-    const { productId, quantity, reason, inputBy, unitPrice } = req.body;
+    // Menangkap currency dari Frontend
+    const { productId, quantity, reason, inputBy, unitPrice, currency } = req.body;
+
+    // CCTV 1: Cek apakah form berhasil mengirim Dollar
+    console.log("👉 [CCTV 1] DATA DARI FORM:", { unitPrice, currency });
 
     if (!quantity || quantity <= 0) {
         res.status(400);
@@ -54,10 +60,26 @@ const stockIn = asyncHandler(async (req, res) => {
         quantity,
         unitPrice: uPrice,
         totalPrice: tPrice,
+        currency: currency || "IDR", // Simpan ke Database!
         reason,
         status: "pending",
         inputBy: inputBy || req.user.id,
     });
+
+    // CCTV 2: Cek apakah sukses masuk database
+    console.log("👉 [CCTV 2] DATA DI DATABASE:", history.currency);
+
+    // 👇 TAMBAHAN: Trigger Notifikasi Database Otomatis
+    try {
+        await Notification.create({
+            title: 'Menunggu Persetujuan Masuk',
+            message: `Ada permintaan Stock In baru untuk ${quantity} unit ${product.name} yang menunggu konfirmasi.`,
+            type: 'approval',
+            color: 'emerald' // Sesuai warna tema Stock In
+        });
+    } catch (err) {
+        console.error("Gagal membuat notifikasi:", err.message);
+    }
 
     const subject = "Action Required: Pending Approval for Stock In Request";
     const htmlContent = `
@@ -71,8 +93,8 @@ const stockIn = asyncHandler(async (req, res) => {
                 <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
                     <p style="margin: 5px 0;"><b>Product:</b> ${product.name}</p>
                     <p style="margin: 5px 0;"><b>Quantity:</b> ${quantity} unit(s)</p>
-                    <p style="margin: 5px 0;"><b>Unit Price:</b> Rp ${uPrice.toLocaleString('id-ID')}</p>
-                    <p style="margin: 5px 0;"><b>Total Price:</b> Rp ${tPrice.toLocaleString('id-ID')}</p>
+                    <p style="margin: 5px 0;"><b>Unit Price:</b> ${currency === 'USD' ? '$' : 'Rp'} ${uPrice.toLocaleString('id-ID')}</p>
+                    <p style="margin: 5px 0;"><b>Total Price:</b> ${currency === 'USD' ? '$' : 'Rp'} ${tPrice.toLocaleString('id-ID')}</p>
                     <p style="margin: 5px 0;"><b>Reason:</b> ${reason}</p>
                 </div>
                 <div style="text-align: center; margin: 30px 0;">
@@ -82,7 +104,6 @@ const stockIn = asyncHandler(async (req, res) => {
         </div>
     `;
     
-    // Email otomatis ditembuskan untuk Multiple Approval
     const targetEmails = `${process.env.FINANCE_EMAIL}, ${process.env.TRAINING_EMAIL}`;
     sendNotificationEmail(targetEmails, subject, htmlContent);
 
@@ -120,6 +141,18 @@ const stockOut = asyncHandler(async (req, res) => {
         inputBy: inputBy || req.user.id,
     });
 
+    // 👇 TAMBAHAN: Trigger Notifikasi Database Otomatis
+    try {
+        await Notification.create({
+            title: 'Menunggu Persetujuan Keluar',
+            message: `Ada permintaan Stock Out baru untuk ${quantity} unit ${product.name} yang menunggu konfirmasi.`,
+            type: 'approval',
+            color: 'amber' // Menggunakan warna peringatan (kuning/merah) untuk stok keluar
+        });
+    } catch (err) {
+        console.error("Gagal membuat notifikasi:", err.message);
+    }
+
     const subject = "Action Required: Pending Approval for Stock Out Request";
     const htmlContent = `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-w: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
@@ -142,14 +175,13 @@ const stockOut = asyncHandler(async (req, res) => {
         </div>
     `;
     
-    // Email otomatis ditembuskan untuk Multiple Approval
     const targetEmails = `${process.env.MANAGEMENT_EMAIL}, ${process.env.TRAINING_EMAIL}`;
     sendNotificationEmail(targetEmails, subject, htmlContent);
 
     res.status(201).json({ message: "Stock Out request submitted", history });
 });
 
-// @desc    Approve Stock In - Menambah Stok secara Real-time
+// @desc    Approve Stock In
 const approveStockIn = asyncHandler(async (req, res) => {
     const history = await StockHistory.findById(req.params.id);
 
@@ -168,7 +200,6 @@ const approveStockIn = asyncHandler(async (req, res) => {
         throw new Error("Product not found");
     }
 
-    // Eksekusi penambahan stok ke produk
     product.quantity += Number(history.quantity);
     await product.save();
 
@@ -179,7 +210,7 @@ const approveStockIn = asyncHandler(async (req, res) => {
     res.status(200).json({ message: "Stock In approved and Product quantity increased", history });
 });
 
-// @desc    Acknowledge Stock In - Validasi Final
+// @desc    Acknowledge Stock In
 const acknowledgeStockIn = asyncHandler(async (req, res) => {
     const history = await StockHistory.findById(req.params.id);
     if (!history) { res.status(404); throw new Error("Not found"); }
@@ -191,7 +222,7 @@ const acknowledgeStockIn = asyncHandler(async (req, res) => {
     res.status(200).json({ message: "Stock In acknowledged", history });
 });
 
-// @desc    Approve Stock Out - Memotong Stok secara Real-time
+// @desc    Approve Stock Out
 const approveStockOut = asyncHandler(async (req, res) => {
     const history = await StockHistory.findById(req.params.id);
     
@@ -210,7 +241,6 @@ const approveStockOut = asyncHandler(async (req, res) => {
         throw new Error("Insufficient stock"); 
     }
     
-    // Eksekusi pengurangan stok produk
     product.quantity -= Number(history.quantity);
     await product.save();
 
@@ -221,7 +251,7 @@ const approveStockOut = asyncHandler(async (req, res) => {
     res.status(200).json({ message: "Stock Out approved and Product quantity decreased", history });
 });
 
-// @desc    Acknowledge Stock Out - Validasi Final
+// @desc    Acknowledge Stock Out
 const acknowledgeStockOut = asyncHandler(async (req, res) => {
     const history = await StockHistory.findById(req.params.id);
     if (!history) { res.status(404); throw new Error("Not found"); }

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Edit2, Trash2, Package, Search, Filter } from "lucide-react";
+import { Plus, Edit2, Trash2, Package, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import productService from "../services/productService";
 import ProductModal from "../components/products/ProductModal";
-import ProductFilter from "../components/products/ProductFilter";
+// ProductFilter di-import tapi tidak dipakai di JSX sebelumnya, dipertahankan saja barangkali dipakai nanti
+import ProductFilter from "../components/products/ProductFilter"; 
 import { useAuth } from "../context/AuthContext";
 
 const Products = () => {
@@ -16,6 +17,10 @@ const Products = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
+
+  // --- STATE UNTUK PAGINASI ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 20;
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -33,6 +38,11 @@ const Products = () => {
   useEffect(() => { 
     fetchProducts(); 
   }, [fetchProducts]);
+
+  // Efek Pintar: Kembali ke halaman 1 jika user melakukan pencarian / filter
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, categoryFilter]);
 
   const handleEdit = (product) => { 
     setEditingProduct(product); 
@@ -60,40 +70,60 @@ const Products = () => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  const handleSelectAll = () => {
-    setSelectedIds(selectedIds.length === filteredProducts.length ? [] : filteredProducts.map(p => p._id));
-  };
-
+  // FILTER LOGIC
   const filteredProducts = products.filter((p) => {
     const searchTerm = (search || "").toLowerCase();
     const matchName = (p.name || "").toLowerCase().includes(searchTerm);
     const matchSku = (p.sku || "").toLowerCase().includes(searchTerm);
-    const matchCategory = categoryFilter === "" || p.category?.includes(categoryFilter); // Diperbaiki agar filter membaca Kategori Utama
+    const matchCategory = categoryFilter === "" || p.category?.includes(categoryFilter); 
     return (matchName || matchSku) && matchCategory;
   });
 
-  // --- PERBAIKAN LOGIKA MULTI-CURRENCY ---
+  const handleSelectAll = () => {
+    // Select All hanya berlaku untuk barang yang TAMPIL DI HALAMAN INI SAJA
+    const currentIds = currentProducts.map(p => p._id);
+    const isAllCurrentSelected = currentIds.every(id => selectedIds.includes(id));
+    
+    if (isAllCurrentSelected) {
+      // Unselect halaman ini
+      setSelectedIds(prev => prev.filter(id => !currentIds.includes(id)));
+    } else {
+      // Select halaman ini, gabung dengan yang sudah ada (Hindari duplikat)
+      setSelectedIds(prev => Array.from(new Set([...prev, ...currentIds])));
+    }
+  };
+
+  // --- LOGIKA PAGINASI (Pemotongan Data) ---
+  const indexOfLastProduct = currentPage * productsPerPage;
+  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+  const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+
+  // 👇 LOGIKA MULTI-CURRENCY 👇
   const selectedProducts = products.filter(p => selectedIds.includes(p._id));
   const totalSelectedStock = selectedProducts.reduce((sum, p) => sum + (p.quantity || 0), 0);
 
   const totalSelectedPriceIDR = selectedProducts
-    .filter(p => (p.currency || (['Logistik Material', 'Office Asset'].includes(p.category) ? 'IDR' : 'USD')) === 'IDR')
+    .filter(p => (p.currency || 'IDR') === 'IDR')
     .reduce((sum, p) => sum + Math.round(Number(p.price || 0)), 0);
 
   const totalSelectedPriceUSD = selectedProducts
-    .filter(p => (p.currency || (['Logistik Material', 'Office Asset'].includes(p.category) ? 'IDR' : 'USD')) === 'USD')
+    .filter(p => (p.currency || 'IDR') === 'USD')
     .reduce((sum, p) => sum + Number(p.price || 0), 0);
 
   const formatPrice = (product) => {
-    const currency = product.currency || (['Logistik Material', 'Office Asset'].includes(product.category) ? 'IDR' : 'USD');
-    if (currency === 'IDR') {
-      return `Rp ${Math.round(Number(product.price)).toLocaleString('id-ID')}`;
+    const currency = product.currency || 'IDR';
+    if (currency === 'USD') {
+      return `$ ${Number(product.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
     }
-    return `$ ${Number(product.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    return `Rp ${Math.round(Number(product.price)).toLocaleString('id-ID')}`;
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -109,7 +139,7 @@ const Products = () => {
         {user?.role === "admin" && (
             <button
                 onClick={() => setModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-black flex items-center gap-2.5 px-6 py-4 rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-wide text-sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-black flex items-center gap-2.5 px-6 py-4 rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-wide text-sm border-2 border-blue-700"
             >
                 <Plus size={22} strokeWidth={3} />
                 Tambah Produk
@@ -117,7 +147,7 @@ const Products = () => {
         )}
       </div>
 
-      {/* --- REVISI SEARCH & FILTER: KHUSUS ORANG TUA --- */}
+      {/* Filter Section */}
       <div className="bg-white p-6 rounded-2xl border-2 border-slate-200 shadow-sm flex flex-col md:flex-row gap-6 items-end">
         <div className="flex-1 w-full space-y-2">
           <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Cari Barang / SKU</label>
@@ -177,7 +207,7 @@ const Products = () => {
                 )}
                 {totalSelectedPriceUSD > 0 && (
                     <span className="text-xl font-black text-blue-100">
-                        / $ {totalSelectedPriceUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        {totalSelectedPriceIDR > 0 ? '/ ' : ''}$ {totalSelectedPriceUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </span>
                 )}
             </div>
@@ -193,15 +223,15 @@ const Products = () => {
       )}
 
       {/* Table Section */}
-      <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-2xl flex flex-col">
+        <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-800 text-white uppercase font-black tracking-widest text-[12px]">
                 <th className="px-5 py-6 border-r border-slate-700/50">
                   <input
                     type="checkbox"
-                    checked={filteredProducts.length > 0 && selectedIds.length === filteredProducts.length}
+                    checked={currentProducts.length > 0 && currentProducts.every(p => selectedIds.includes(p._id))}
                     onChange={handleSelectAll}
                     className="w-6 h-6 rounded-md border-gray-300 accent-blue-600 cursor-pointer"
                   />
@@ -217,10 +247,10 @@ const Products = () => {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr><td colSpan="7" className="px-6 py-12 text-center font-black text-slate-500 italic uppercase">Sedang Memuat Data...</td></tr>
-              ) : filteredProducts.length === 0 ? (
+              ) : currentProducts.length === 0 ? (
                 <tr><td colSpan="7" className="px-6 py-12 text-center font-black text-slate-400 uppercase">Produk Tidak Ditemukan</td></tr>
               ) : (
-                filteredProducts.map((product, index) => (
+                currentProducts.map((product, index) => (
                   <tr key={product._id} className={`group transition-all hover:bg-blue-50/50 align-middle ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
                     <td className="px-5 py-8 border-r border-slate-100 text-center">
                       <input
@@ -238,14 +268,12 @@ const Products = () => {
                       </div>
                     </td>
                     
-                    {/* --- REVISI TAMPILAN KATEGORI (Solusi 1) --- */}
                     <td className="px-6 py-8 border-r border-slate-100">
                       {(() => {
-                        // Cek apakah string kategori mengandung pemisah " - "
                         if (product.category && product.category.includes(' - ')) {
                           const catParts = product.category.split(' - ');
-                          const kategoriUtama = catParts[0]; // Kategori Utama (ex: Learning Material)
-                          const subPath = catParts.slice(1).join(' • '); // Sisanya digabung pakai titik
+                          const kategoriUtama = catParts[0]; 
+                          const subPath = catParts.slice(1).join(' • '); 
 
                           return (
                             <div className="flex flex-col gap-1.5 items-start">
@@ -262,7 +290,6 @@ const Products = () => {
                           );
                         } 
                         
-                        // Fallback jika tidak ada " - " (Cuma 1 Kategori)
                         return (
                           <div className="flex justify-start">
                               <span className="px-3 py-1.5 bg-slate-800 text-white text-[10px] font-black rounded-lg shadow-sm uppercase tracking-wider">
@@ -307,6 +334,49 @@ const Products = () => {
             </tbody>
           </table>
         </div>
+        
+        {/* FOOTER PAGINASI */}
+        {!loading && filteredProducts.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between px-8 py-5 border-t-2 border-slate-200 bg-slate-50">
+            <div className="text-[13px] font-bold text-slate-500 uppercase tracking-widest mb-4 sm:mb-0">
+              Menampilkan <span className="text-slate-900 font-black">{indexOfFirstProduct + 1}</span> - <span className="text-slate-900 font-black">{Math.min(indexOfLastProduct, filteredProducts.length)}</span> dari <span className="text-slate-900 font-black">{filteredProducts.length}</span> Barang
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => paginate(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2.5 rounded-xl border-2 border-slate-200 text-slate-600 hover:bg-white hover:border-blue-500 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm bg-white"
+              >
+                <ChevronLeft size={20} strokeWidth={3} />
+              </button>
+              
+              <div className="flex items-center gap-1.5 px-3">
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => paginate(i + 1)}
+                    className={`w-10 h-10 rounded-xl text-sm font-black transition-all shadow-sm flex items-center justify-center ${
+                      currentPage === i + 1
+                        ? 'bg-blue-600 text-white border-2 border-blue-700 shadow-inner'
+                        : 'bg-white text-slate-600 border-2 border-slate-200 hover:border-blue-400 hover:text-blue-600'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => paginate(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-2.5 rounded-xl border-2 border-slate-200 text-slate-600 hover:bg-white hover:border-blue-500 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm bg-white"
+              >
+                <ChevronRight size={20} strokeWidth={3} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <ProductModal

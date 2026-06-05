@@ -28,6 +28,13 @@ const productSchema = new mongoose.Schema(
             required: [true, "Please add a price"],
             min: [0, "Price must be greater than or equal to 0"],
         },
+        // 👇 TAMBAHAN KUNCI: Kolom Mata Uang 👇
+        currency: {
+            type: String,
+            enum: ["IDR", "USD"],
+            default: "IDR", // Default Rupiah agar data lama tetap aman
+        },
+        // -------------------------------------
         quantity: {
             type: Number,
             required: [true, "Please add a quantity"],

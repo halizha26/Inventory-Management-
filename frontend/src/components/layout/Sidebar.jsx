@@ -11,7 +11,8 @@ import {
   X,
   PieChart,
   Users2,
-  BoxesIcon
+  BoxesIcon,
+  ShieldAlert // Icon untuk Admin Panel
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
@@ -74,14 +75,14 @@ const Sidebar = ({ isOpen, onClose }) => {
           <div className="p-2 bg-brand-600 rounded-lg">
             <PieChart className="text-white w-6 h-6" />
           </div>
-          <span className="text-xl font-bold text-gray-900 tracking-tight">Inventory</span>
+          <span className="text-xl font-bold text-gray-900 tracking-tight">Invento.</span>
         </div>
         <button onClick={onClose} className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
           <X size={20} />
         </button>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation (flex-1 akan mendorong menu bawah ke dasar) */}
       <nav className="flex-1 px-4 space-y-1 overflow-y-auto py-4">
         {filteredLinks.map((link) => (
           <NavLink
@@ -111,9 +112,27 @@ const Sidebar = ({ isOpen, onClose }) => {
         ))}
       </nav>
 
-      {/* User & Logout */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center gap-3 px-4 py-3 mb-2">
+      {/* User, Admin Panel & Logout (Menempel di bawah) */}
+      <div className="p-4 border-t border-gray-200 bg-gray-50">
+        
+        {/* Tombol Admin Panel Khusus Admin */}
+        {user?.role === 'admin' && (
+          <NavLink
+            to="/admin-panel"
+            onClick={() => window.innerWidth < 1024 && onClose()}
+            className={({ isActive }) => clsx(
+              "flex items-center gap-3 px-4 py-2 mb-3 rounded-lg transition-all duration-200 font-medium text-sm",
+              isActive
+                ? "bg-brand-100 text-brand-700 shadow-sm"
+                : "text-gray-600 hover:bg-gray-100 hover:text-brand-600"
+            )}
+          >
+            <ShieldAlert size={18} />
+            <span>Admin Panel</span>
+          </NavLink>
+        )}
+
+        <div className="flex items-center gap-3 px-4 py-2 mb-2">
           <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold">
             {user?.name?.charAt(0).toUpperCase()}
           </div>
@@ -122,6 +141,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             <p className="text-xs text-gray-500 truncate capitalize">{user?.role}</p>
           </div>
         </div>
+        
         <button
           onClick={logout}
           className="w-full flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
