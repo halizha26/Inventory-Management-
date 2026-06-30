@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 // --- DAFTAR IMPORT ROUTER ---
+const startCronJobs = require('./utils/cronJobs');
 const userRouter = require('./routes/UserRouter');
 const productRouter = require('./routes/ProductRouter');
 const stockRouter = require('./routes/StockRouter');
@@ -11,8 +12,12 @@ const reportRouter = require('./routes/ReportRouter');
 const exportRouter = require('./routes/ExportRouter');
 const exchangeRateRoute = require('./routes/exchangeRateRoute');
 
-// 👇 TAMBAHAN: Import Router Notifikasi
+// Import Router Notifikasi & Kategori
 const notificationRouter = require('./routes/NotificationRouter');
+const categoryRouter = require('./routes/CategoryRouter');
+
+// 👇 TAMBAHAN TAHAP 1: Import Router Setting (Untuk Kurs BI)
+const settingRouter = require('./routes/settingRoute');
 
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
@@ -43,6 +48,7 @@ app.use(express.json());
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('MongoDB connected');
+    console.log("Sistem Cron Job Otomatis Aktif");
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });
@@ -56,10 +62,11 @@ app.use('/api/stock', stockRouter);
 app.use('/api/reports', reportRouter);
 app.use('/api/export', exportRouter);
 app.use('/api/exchange-rate', exchangeRateRoute);
-
-// 👇 TAMBAHAN: Daftarkan jalur API Notifikasi
 app.use('/api/notifications', notificationRouter);
+app.use('/api/categories', categoryRouter);
 
+// 👇 TAMBAHAN TAHAP 1: Daftarkan jalur API Setting (Kurs BI)
+app.use('/api/settings', settingRouter);
 
 // Global Error Handler
 const globalErrorHandler = require('./middlewares/GlobalErrorHandler');

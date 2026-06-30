@@ -8,9 +8,6 @@ import { toast } from 'react-hot-toast';
 
 import Button from '../components/common/Button';
 import reportService from '../services/reportService';
-// Pastikan nama file import di bawah ini sesuai dengan yang kamu buat (exchangeRateService atau exchangeRateApi)
-import { getActiveRate } from '../services/exchangeRateApi';
-
 
 const Reports = () => {
   const [summary, setSummary] = useState(null);
@@ -18,7 +15,7 @@ const Reports = () => {
 
   // State untuk konversi Multi-Mata Uang
   const [exchangeRate, setExchangeRate] = useState(15500);
-  const [rateSource, setRateSource] = useState('Manual_Admin');
+  const [rateSource, setRateSource] = useState('Default_System');
 
   // State untuk detail kategori
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -29,17 +26,18 @@ const Reports = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Mengambil data summary dan kurs secara bersamaan (paralel) agar loading lebih cepat
+        // Mengambil data summary dari API lama, dan mengambil Kurs dari API Settings TERBARU
         const [summaryData, rateResponse] = await Promise.all([
             reportService.getSummary(),
-            getActiveRate().catch(() => null) // Mencegah error jika API kurs sedang mati
+            fetch("http://localhost:3000/api/settings").then(res => res.json()).catch(() => null)
         ]);
 
         setSummary(summaryData);
 
-        if (rateResponse && rateResponse.data && rateResponse.data.success) {
-            setExchangeRate(rateResponse.data.data.rate);
-            setRateSource(rateResponse.data.data.source);
+        // Jika berhasil mengambil data dari database pengaturan global kita
+        if (rateResponse && rateResponse.usdRate) {
+            setExchangeRate(rateResponse.usdRate);
+            setRateSource('Bank Indonesia (JISDOR)'); 
         }
       } catch (error) {
         console.error(error);
@@ -178,7 +176,7 @@ const Reports = () => {
                           *Kurs Aktif: 1 USD = Rp {exchangeRate.toLocaleString('id-ID')}
                       </span>
                       <span className="text-[10px] font-bold text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg uppercase tracking-wider bg-white/50">
-                          Sumber: {rateSource.replace('_', ' ')}
+                          Sumber: {rateSource}
                       </span>
                   </div>
               </div>

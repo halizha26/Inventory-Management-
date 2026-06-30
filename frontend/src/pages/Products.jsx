@@ -4,7 +4,6 @@ import { toast } from "react-hot-toast";
 
 import productService from "../services/productService";
 import ProductModal from "../components/products/ProductModal";
-// ProductFilter di-import tapi tidak dipakai di JSX sebelumnya, dipertahankan saja barangkali dipakai nanti
 import ProductFilter from "../components/products/ProductFilter"; 
 import { useAuth } from "../context/AuthContext";
 
@@ -17,6 +16,9 @@ const Products = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
+
+  // --- STATE UNTUK KURS BANK INDONESIA ---
+  const [usdRate, setUsdRate] = useState(0);
 
   // --- STATE UNTUK PAGINASI ---
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,11 +37,23 @@ const Products = () => {
     }
   }, []);
 
+  const fetchUsdRate = useCallback(async () => {
+    try {
+      const res = await fetch("http://localhost:3000/api/settings");
+      const data = await res.json();
+      if (data && data.usdRate) {
+        setUsdRate(data.usdRate);
+      }
+    } catch (error) {
+      console.error("Gagal memuat kurs BI:", error);
+    }
+  }, []);
+
   useEffect(() => { 
     fetchProducts(); 
-  }, [fetchProducts]);
+    fetchUsdRate();
+  }, [fetchProducts, fetchUsdRate]);
 
-  // Efek Pintar: Kembali ke halaman 1 jika user melakukan pencarian / filter
   useEffect(() => {
     setCurrentPage(1);
   }, [search, categoryFilter]);
@@ -70,7 +84,6 @@ const Products = () => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  // FILTER LOGIC
   const filteredProducts = products.filter((p) => {
     const searchTerm = (search || "").toLowerCase();
     const matchName = (p.name || "").toLowerCase().includes(searchTerm);
@@ -80,20 +93,17 @@ const Products = () => {
   });
 
   const handleSelectAll = () => {
-    // Select All hanya berlaku untuk barang yang TAMPIL DI HALAMAN INI SAJA
     const currentIds = currentProducts.map(p => p._id);
     const isAllCurrentSelected = currentIds.every(id => selectedIds.includes(id));
     
     if (isAllCurrentSelected) {
-      // Unselect halaman ini
       setSelectedIds(prev => prev.filter(id => !currentIds.includes(id)));
     } else {
-      // Select halaman ini, gabung dengan yang sudah ada (Hindari duplikat)
       setSelectedIds(prev => Array.from(new Set([...prev, ...currentIds])));
     }
   };
 
-  // --- LOGIKA PAGINASI (Pemotongan Data) ---
+  // --- LOGIKA PAGINASI ---
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
   const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
@@ -101,25 +111,26 @@ const Products = () => {
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-
   // 👇 LOGIKA MULTI-CURRENCY 👇
   const selectedProducts = products.filter(p => selectedIds.includes(p._id));
   const totalSelectedStock = selectedProducts.reduce((sum, p) => sum + (p.quantity || 0), 0);
 
   const totalSelectedPriceIDR = selectedProducts
     .filter(p => (p.currency || 'IDR') === 'IDR')
-    .reduce((sum, p) => sum + Math.round(Number(p.price || 0)), 0);
+    .reduce((sum, p) => sum + (Math.round(Number(p.price || 0)) * (p.quantity || 0)), 0);
 
   const totalSelectedPriceUSD = selectedProducts
     .filter(p => (p.currency || 'IDR') === 'USD')
-    .reduce((sum, p) => sum + Number(p.price || 0), 0);
+    .reduce((sum, p) => sum + (Number(p.price || 0) * (p.quantity || 0)), 0);
 
-  const formatPrice = (product) => {
-    const currency = product.currency || 'IDR';
+  const grandTotalIDR = totalSelectedPriceIDR + (totalSelectedPriceUSD * usdRate);
+
+  // Fungsi Pembantu Formatter Mata Uang Dinamis
+  const formatValue = (amount, currency = 'IDR') => {
     if (currency === 'USD') {
-      return `$ ${Number(product.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+      return `$ ${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
     }
-    return `Rp ${Math.round(Number(product.price)).toLocaleString('id-ID')}`;
+    return `Rp ${Math.round(Number(amount)).toLocaleString('id-ID')}`;
   };
 
   return (
@@ -184,7 +195,7 @@ const Products = () => {
         </div>
       </div>
 
-      {/* Summary Bar - Multi Currency */}
+      {/* Summary Bar */}
       {selectedIds.length > 0 && (
         <div className="bg-blue-600 border-2 border-blue-700 rounded-2xl px-8 py-5 flex flex-wrap gap-8 items-center text-white shadow-xl animate-in fade-in slide-in-from-top-4">
           <div className="flex flex-col border-r border-blue-400 pr-8">
@@ -198,18 +209,11 @@ const Products = () => {
           </div>
 
           <div className="flex flex-col flex-1">
-            <span className="text-[10px] font-black uppercase tracking-widest text-blue-100 italic">Estimasi Nilai Barang</span>
-            <div className="flex flex-wrap gap-4 items-baseline">
-                {totalSelectedPriceIDR > 0 && (
-                    <span className="text-2xl font-black text-yellow-300">
-                        Rp {totalSelectedPriceIDR.toLocaleString('id-ID')}
-                    </span>
-                )}
-                {totalSelectedPriceUSD > 0 && (
-                    <span className="text-xl font-black text-blue-100">
-                        {totalSelectedPriceIDR > 0 ? '/ ' : ''}$ {totalSelectedPriceUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </span>
-                )}
+            <span className="text-[10px] font-black uppercase tracking-widest text-blue-100 italic">Total Valuasi Aset Terpilih (Rupiah)</span>
+            <div className="flex flex-wrap gap-3 items-center mt-1">
+              <span className="text-2xl font-black text-yellow-300">
+                  Rp {grandTotalIDR.toLocaleString('id-ID')}
+              </span>
             </div>
           </div>
 
@@ -239,7 +243,8 @@ const Products = () => {
                 <th className="px-6 py-6 border-r border-slate-700/50">Info Produk</th>
                 <th className="px-6 py-6 border-r border-slate-700/50">Kategori</th>
                 <th className="px-6 py-6 border-r border-slate-700/50 text-center">Stok</th>
-                <th className="px-6 py-6 border-r border-slate-700/50 text-right">Harga Satuan</th>
+                {/* 👇 BERUBAH MENJADI TOTAL BIAYA 👇 */}
+                <th className="px-6 py-6 border-r border-slate-700/50 text-right">Total Biaya</th>
                 <th className="px-6 py-6 border-r border-slate-700/50 text-center">Status</th>
                 <th className="px-6 py-6 text-center sticky right-0 z-20 bg-slate-800 border-l border-slate-700 shadow-[-10px_0_15px_rgba(0,0,0,0.3)]">Aksi</th>
               </tr>
@@ -308,9 +313,17 @@ const Products = () => {
                         <span className="text-[10px] text-slate-400 font-black uppercase tracking-tighter mt-1">Sisa Unit</span>
                       </div>
                     </td>
+                    
+                    {/* 👇 STRUKTUR BARU: TOTAL BIAYA DI ATAS, HARGA SATUAN DI BAWAH 👇 */}
                     <td className="px-6 py-8 border-r border-slate-100 text-right whitespace-nowrap">
-                      <span className="text-[20px] font-black text-slate-900 tracking-tight">{formatPrice(product)}</span>
+                      <div className="text-[20px] font-black text-slate-900 tracking-tight">
+                        {formatValue((product.price || 0) * (product.quantity || 0), product.currency)}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-bold uppercase tracking-tight mt-0.5">
+                        {formatValue(product.price || 0, product.currency)} / Unit
+                      </div>
                     </td>
+                    
                     <td className="px-6 py-8 border-r border-slate-100 text-center uppercase">
                       <span className={`inline-block px-5 py-2 rounded-xl text-[12px] font-black tracking-widest border-2 shadow-sm
                         ${product.status === "pending" ? "bg-amber-100 text-amber-700 border-amber-400" : "bg-green-100 text-green-700 border-green-400"}
@@ -379,11 +392,12 @@ const Products = () => {
         )}
       </div>
 
-      <ProductModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        productToEdit={editingProduct}
+      <ProductModal 
+        isOpen={isModalOpen} 
+        onClose={handleModalClose} 
+        productToEdit={editingProduct} 
         onSuccess={fetchProducts}
+        products={products} 
       />
     </div>
   );

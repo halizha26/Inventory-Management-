@@ -1,5 +1,9 @@
 {
   "dependencies": {
-    "nodemailer": "^8.0.5"
+    "axios": "^1.18.0",
+    "node-cron": "^4.4.1",
+    "nodemailer": "^8.0.5",
+    "react-select": "^5.10.2",
+    "xml2js": "^0.6.2"
   }
 }
