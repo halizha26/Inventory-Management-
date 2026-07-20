@@ -244,17 +244,19 @@ const Products = () => {
                 <th className="px-6 py-6 border-r border-slate-700/50">Kategori</th>
                 <th className="px-6 py-6 border-r border-slate-700/50 text-center">Stok</th>
                 {/* 👇 BERUBAH MENJADI TOTAL BIAYA 👇 */}
-                <th className="px-6 py-6 border-r border-slate-700/50 text-right">Total Biaya</th>
+                <th className="px-6 py-6 border-r border-slate-700/50 text-right">Total Aset</th>
                 <th className="px-6 py-6 border-r border-slate-700/50 text-center">Status</th>
-                <th className="px-6 py-6 text-center sticky right-0 z-20 bg-slate-800 border-l border-slate-700 shadow-[-10px_0_15px_rgba(0,0,0,0.3)]">Aksi</th>
+                {user?.role?.toLowerCase() !== 'staff' && (
+  <th className="px-6 py-6 text-center sticky right-0 z-20 bg-slate-800 border-l border-slate-700 shadow-[-10px_0_15px_rgba(0,0,0,0.3)]">Aksi</th>
+)}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr><td colSpan="7" className="px-6 py-12 text-center font-black text-slate-500 italic uppercase">Sedang Memuat Data...</td></tr>
-              ) : currentProducts.length === 0 ? (
-                <tr><td colSpan="7" className="px-6 py-12 text-center font-black text-slate-400 uppercase">Produk Tidak Ditemukan</td></tr>
-              ) : (
+            {loading ? (
+  <tr><td colSpan={user?.role?.toLowerCase() !== 'staff' ? "7" : "6"} className="px-6 py-12 text-center font-black text-slate-500 italic uppercase">Sedang Memuat Data...</td></tr>
+) : currentProducts.length === 0 ? (
+  <tr><td colSpan={user?.role?.toLowerCase() !== 'staff' ? "7" : "6"} className="px-6 py-12 text-center font-black text-slate-400 uppercase">Produk Tidak Ditemukan</td></tr>
+) : (
                 currentProducts.map((product, index) => (
                   <tr key={product._id} className={`group transition-all hover:bg-blue-50/50 align-middle ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
                     <td className="px-5 py-8 border-r border-slate-100 text-center">
@@ -331,16 +333,18 @@ const Products = () => {
                         {product.status || 'APPROVED'}
                       </span>
                     </td>
-                    <td className={`px-6 py-8 sticky right-0 z-20 border-l border-slate-200 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'} group-hover:bg-blue-100/40`}>
-                      <div className="flex justify-center gap-4">
-                        <button onClick={() => handleEdit(product)} className="p-4 bg-blue-100 text-blue-700 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-md active:scale-90">
-                          <Edit2 size={24} strokeWidth={3} />
-                        </button>
-                        <button onClick={() => handleDelete(product._id)} className="p-4 bg-red-100 text-red-700 rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-md active:scale-90">
-                          <Trash2 size={24} strokeWidth={3} />
-                        </button>
-                      </div>
-                    </td>
+                    {user?.role?.toLowerCase() !== 'staff' && (
+  <td className={`px-6 py-8 sticky right-0 z-20 border-l border-slate-200 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'} group-hover:bg-blue-100/40`}>
+    <div className="flex justify-center gap-4">
+      <button onClick={() => handleEdit(product)} className="p-4 bg-blue-100 text-blue-700 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-md active:scale-90">
+        <Edit2 size={24} strokeWidth={3} />
+      </button>
+      <button onClick={() => handleDelete(product._id)} className="p-4 bg-red-100 text-red-700 rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-md active:scale-90">
+        <Trash2 size={24} strokeWidth={3} />
+      </button>
+    </div>
+  </td>
+)}
                   </tr>
                 ))
               )}

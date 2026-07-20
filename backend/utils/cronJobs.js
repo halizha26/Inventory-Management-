@@ -5,12 +5,27 @@ const https = require('https');
 const Setting = require('../models/Setting');
 
 const startCronJobs = () => {
-  // Jadwal: Menit 1, Jam 0, Tanggal 1, Bulan Apa Saja, Hari Apa Saja
-  // Berjalan otomatis setiap tanggal 1 jam 00:01 pagi
-  cron.schedule('1 0 1 * *', async () => {
-    console.log("⏰ [CRON] Menjalankan update Kurs BI Otomatis Bulanan...");
+  // Jadwal: Menit 0, Jam 16, Hari Apa Saja, Bulan Apa Saja
+  // Menjalankan pengecekan setiap hari pukul 16:00 WIB (Setelah BI merilis kurs final harian)
+  cron.schedule('0 16 * * *', async () => {
+    
+    // 👇 LOGIKA DETEKSI AKHIR BULAN 👇
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Jika besok BUKAN tanggal 1, berarti hari ini BUKAN akhir bulan.
+    // Hentikan eksekusi di sini, jangan tarik data API BI.
+    if (tomorrow.getDate() !== 1) {
+      // Buka komentar (uncomment) baris di bawah jika ingin melihat log setiap hari di terminal
+      // console.log("⏳ [CRON] Hari ini bukan akhir bulan. Sinkronisasi kurs di-skip.");
+      return; 
+    }
+
+    console.log("⏰ [CRON] Hari ini adalah AKHIR BULAN! Menjalankan update Kurs BI Otomatis...");
+    
     try {
-      const today = new Date();
+      // Mendapatkan format YYYY-MM-DD
       const endDateStr = today.toISOString().split('T')[0];
 
       const pastDate = new Date();
@@ -30,21 +45,24 @@ const startCronJobs = () => {
       let tableData = result?.DataSet?.['diffgr:diffgram']?.NewDataSet?.Table;
       if (!Array.isArray(tableData)) tableData = [tableData];
 
+      // Mengambil baris data terakhir (terbaru)
       const latestData = tableData[tableData.length - 1];
       const kursTengah = (parseFloat(latestData.beli_subkurslokal) + parseFloat(latestData.jual_subkurslokal)) / 2;
 
+      // Simpan ke MongoDB
       await Setting.findOneAndUpdate(
         { settingId: 'GLOBAL_CONFIG' },
         { usdRate: kursTengah, lastSyncDate: new Date() },
         { new: true, upsert: true }
       );
-      console.log(`✅ [CRON] Sukses update kurs bulan ini: Rp ${kursTengah}`);
+      console.log(`✅ [CRON] Sukses update kurs tutup buku bulan ini: Rp ${kursTengah}`);
+      
     } catch (error) {
       console.error("❌ [CRON] Gagal update kurs BI:", error.message);
     }
   }, {
     scheduled: true,
-    timezone: "Asia/Jakarta" // Wajib diset Waktu Jakarta!
+    timezone: "Asia/Jakarta" // Sangat krusial agar 16:00 mengacu pada Waktu Jakarta
   });
 };
 

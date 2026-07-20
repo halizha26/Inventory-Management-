@@ -127,7 +127,7 @@ const AdminPanel = () => {
             {isSyncing ? "Menarik Data Resmi..." : "Sinkronisasi Manual Bulan Ini"}
           </button>
           <p className="text-[9px] text-center font-bold text-slate-400 uppercase tracking-widest mt-4">
-            *Sistem Cron Job otomatis update setiap Tgl 1
+            *SISTEM CRON JOB OTOMATIS UPDATE SETIAP AKHIR BULAN PADA PUKUL 16:00 WIB
           </p>
         </div>
 

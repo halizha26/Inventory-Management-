@@ -15,8 +15,8 @@ const LowStock = () => {
       const data = await productService.getAll();
       const allProducts = data.products || [];
       
-      // FILTER MANUAL: Stok 10 ke bawah
-      const lowItems = allProducts.filter(p => p.quantity <= 10);
+      // FILTER MANUAL: Stok 25 ke bawah
+      const lowItems = allProducts.filter(p => p.quantity <= 25);
       setLowStockProducts(lowItems);
     } catch (error) {
       console.error(error);
@@ -39,7 +39,7 @@ const LowStock = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <AlertTriangle className="text-amber-500" size={28} />
-          Peringatan Stok Tipis (≤ 10)
+          Peringatan Stok Tipis (≤ 25)
         </h1>
         <p className="text-sm text-gray-500">Daftar produk yang stoknya sudah kritis dan perlu ditambah.</p>
       </div>
@@ -79,7 +79,7 @@ const LowStock = () => {
                   <td colSpan="4" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <Package className="text-gray-300" size={48} />
-                      <p className="font-bold text-gray-500">Hebat! Semua stok aman di atas 10 unit.</p>
+                      <p className="font-bold text-gray-500">Hebat! Semua stok aman di atas 25 unit.</p>
                     </div>
                   </td>
                 </tr>

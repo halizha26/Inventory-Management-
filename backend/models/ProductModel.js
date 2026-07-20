@@ -1,5 +1,23 @@
 const mongoose = require("mongoose");
 
+// 👇 SKEMA UNTUK FIFO / IDENTIFIKASI SPESIFIK 👇
+const batchSchema = new mongoose.Schema({
+    qty: {
+        type: Number,
+        required: true,
+        min: [0, "Batch quantity cannot be negative"],
+    },
+    dateIn: {
+        type: Date,
+        default: Date.now,
+    },
+    // 👇 Simpan harga per kloter untuk kebutuhan Finance 👇
+    pricePerUnit: {
+        type: Number,
+        default: 0
+    }
+});
+
 const productSchema = new mongoose.Schema(
     {
         user: {
@@ -14,8 +32,8 @@ const productSchema = new mongoose.Schema(
         },
         sku: {
             type: String,
-            required: [true, "Please add an SKU"], // <--- Wajib diisi
-            unique: true, // <--- SKU harus unik, tidak boleh sama
+            required: [true, "Please add an SKU"],
+            unique: true,
             trim: true,
         },
         category: {
@@ -28,24 +46,35 @@ const productSchema = new mongoose.Schema(
             required: [true, "Please add a price"],
             min: [0, "Price must be greater than or equal to 0"],
         },
-        // 👇 TAMBAHAN KUNCI: Kolom Mata Uang 👇
         currency: {
             type: String,
             enum: ["IDR", "USD"],
-            default: "IDR", // Default Rupiah agar data lama tetap aman
+            default: "IDR",
         },
-        // -------------------------------------
+        // 👇 TAMBAHAN BARU: Kolom Satuan (Unit) 👇
+        unit: {
+            type: String,
+            enum: ["Pcs", "Paket"],
+            default: "Pcs",
+        },
+        
+        // 👇 TOTAL STOK (Tetap dipertahankan untuk tampilan UI Staf) 👇
         quantity: {
             type: Number,
             required: [true, "Please add a quantity"],
             min: [0, "Quantity must be greater than or equal to 0"],
             default: 0,
         },
+
+        // 👇 INTEGRASI BATCHES (Kloter) 👇
+        batches: [batchSchema],
+
+        // 👇 PERUBAHAN: Batas minimum stok menjadi 25 👇
         minStock: {
             type: Number,
             required: [true, "Please add a minimum stock level"],
-            min: [0, "Min stock must be greater than or equal to 0"],
-            default: 0,
+            min: [25, "Minimum stock alert level cannot be less than 25"],
+            default: 25,
         },
         description: {
             type: String,
@@ -66,8 +95,5 @@ const productSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
-
-// Optional: Composite unique index to ensure name is unique PER user
-// productSchema.index({ user: 1, name: 1 }, { unique: true });
 
 module.exports = mongoose.model("Product", productSchema);

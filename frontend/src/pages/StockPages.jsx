@@ -241,9 +241,7 @@ const StockPages = ({ type }) => {
                 <th className="px-4 py-3.5 font-bold border-b border-slate-700 text-center sticky right-0 bg-slate-800 z-[25] shadow-[-5px_0_10px_rgba(0,0,0,0.1)]">Aksi</th>
               </tr>
             </thead>
-            
             <tbody className="divide-y divide-slate-200">
-              {/* RENDERING MENGGUNAKAN currentGroups ALIAS DATA YANG SUDAH DIPOTONG */}
               {currentGroups.map((group, index) => {
                 const isEven = index % 2 === 0;
                 const rowBg = isEven ? 'bg-white' : 'bg-slate-50';
@@ -267,14 +265,20 @@ const StockPages = ({ type }) => {
                       </div>
                     </td>
 
-                    {/* PRODUK + ALASAN */}
+                    {/* PRODUK + ALASAN (SKU DITAMBAHKAN DI SINI) */}
                     <td className="px-0 py-0 border-r border-slate-100 min-w-[280px] align-top">
                       <div className="flex flex-col h-full">
                         {group.items.map((item, idx) => (
-                          <div key={idx} className={`px-4 py-3 flex items-center min-h-[50px] ${idx !== group.items.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                          <div key={idx} className={`px-4 py-3 flex flex-col justify-center min-h-[50px] ${idx !== group.items.length - 1 ? 'border-b border-slate-100' : ''}`}>
                             <span className="text-sm font-bold text-slate-800">
-                              • {item.product?.name}
+                              • {item.product?.name || 'Produk Tidak Ditemukan'}
                             </span>
+                            {/* Tambahan SKU di bawah nama produk */}
+                            <div className="flex items-center gap-1 mt-1 ml-3">
+                                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200 uppercase tracking-widest">
+                                    SKU: {item.product?.sku || 'N/A'}
+                                </span>
+                            </div>
                           </div>
                         ))}
                         {group.reason && (

@@ -1,7 +1,6 @@
 const asyncHandler = require("../utils/AsyncHandler");
 const Product = require("../models/ProductModel");
 const StockHistory = require("../models/StockHistoryModel");
-// 👇 TAMBAHAN: Import Model Notifikasi yang baru kita buat
 const Notification = require("../models/NotificationModel"); 
 const nodemailer = require("nodemailer"); 
 
@@ -33,11 +32,7 @@ const sendNotificationEmail = async (toEmail, subject, htmlContent) => {
 
 // @desc    Stock In - Staff input (status: pending)
 const stockIn = asyncHandler(async (req, res) => {
-    // Menangkap currency dari Frontend
     const { productId, quantity, reason, inputBy, unitPrice, currency } = req.body;
-
-    // CCTV 1: Cek apakah form berhasil mengirim Dollar
-    console.log("👉 [CCTV 1] DATA DARI FORM:", { unitPrice, currency });
 
     if (!quantity || quantity <= 0) {
         res.status(400);
@@ -60,22 +55,18 @@ const stockIn = asyncHandler(async (req, res) => {
         quantity,
         unitPrice: uPrice,
         totalPrice: tPrice,
-        currency: currency || "IDR", // Simpan ke Database!
+        currency: currency || "IDR", 
         reason,
         status: "pending",
         inputBy: inputBy || req.user.id,
     });
 
-    // CCTV 2: Cek apakah sukses masuk database
-    console.log("👉 [CCTV 2] DATA DI DATABASE:", history.currency);
-
-    // 👇 TAMBAHAN: Trigger Notifikasi Database Otomatis
     try {
         await Notification.create({
             title: 'Menunggu Persetujuan Masuk',
             message: `Ada permintaan Stock In baru untuk ${quantity} unit ${product.name} yang menunggu konfirmasi.`,
             type: 'approval',
-            color: 'emerald' // Sesuai warna tema Stock In
+            color: 'emerald' 
         });
     } catch (err) {
         console.error("Gagal membuat notifikasi:", err.message);
@@ -90,16 +81,6 @@ const stockIn = asyncHandler(async (req, res) => {
             <div style="padding: 20px;">
                 <p><b>Hello Team,</b></p>
                 <p>A new <b>Stock In</b> request has been submitted and is currently waiting for your review.</p>
-                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                    <p style="margin: 5px 0;"><b>Product:</b> ${product.name}</p>
-                    <p style="margin: 5px 0;"><b>Quantity:</b> ${quantity} unit(s)</p>
-                    <p style="margin: 5px 0;"><b>Unit Price:</b> ${currency === 'USD' ? '$' : 'Rp'} ${uPrice.toLocaleString('id-ID')}</p>
-                    <p style="margin: 5px 0;"><b>Total Price:</b> ${currency === 'USD' ? '$' : 'Rp'} ${tPrice.toLocaleString('id-ID')}</p>
-                    <p style="margin: 5px 0;"><b>Reason:</b> ${reason}</p>
-                </div>
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="http://localhost:5173/stock-in" style="background-color: #10b981; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">Review Request Now</a>
-                </div>
             </div>
         </div>
     `;
@@ -112,7 +93,7 @@ const stockIn = asyncHandler(async (req, res) => {
 
 // @desc    Stock Out - Staff input (status: pending)
 const stockOut = asyncHandler(async (req, res) => {
-    const { productId, quantity, reason, salesOrderNumber, inputBy } = req.body;
+    const { productId, quantity, reason, salesOrderNumber, inputBy, batchId } = req.body;
 
     if (!quantity || quantity <= 0) {
         res.status(400);
@@ -137,17 +118,17 @@ const stockOut = asyncHandler(async (req, res) => {
         quantity,
         reason,
         salesOrderNumber,
+        batchId, 
         status: "pending",
         inputBy: inputBy || req.user.id,
     });
 
-    // 👇 TAMBAHAN: Trigger Notifikasi Database Otomatis
     try {
         await Notification.create({
             title: 'Menunggu Persetujuan Keluar',
             message: `Ada permintaan Stock Out baru untuk ${quantity} unit ${product.name} yang menunggu konfirmasi.`,
             type: 'approval',
-            color: 'amber' // Menggunakan warna peringatan (kuning/merah) untuk stok keluar
+            color: 'amber' 
         });
     } catch (err) {
         console.error("Gagal membuat notifikasi:", err.message);
@@ -162,15 +143,6 @@ const stockOut = asyncHandler(async (req, res) => {
             <div style="padding: 20px;">
                 <p><b>Hello Team,</b></p>
                 <p>A new <b>Stock Out</b> request has been submitted and is currently waiting for your review.</p>
-                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                    <p style="margin: 5px 0;"><b>Product:</b> ${product.name}</p>
-                    <p style="margin: 5px 0;"><b>Quantity:</b> ${quantity} unit(s)</p>
-                    <p style="margin: 5px 0;"><b>Reason:</b> ${reason}</p>
-                    ${salesOrderNumber ? `<p style="margin: 5px 0;"><b>Sales Order No:</b> ${salesOrderNumber}</p>` : ''}
-                </div>
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="http://localhost:5173/stock-out" style="background-color: #ef4444; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">Review Request Now</a>
-                </div>
             </div>
         </div>
     `;
@@ -200,6 +172,17 @@ const approveStockIn = asyncHandler(async (req, res) => {
         throw new Error("Product not found");
     }
 
+    // AUTO-HEALING DATA LAMA
+    if (product.minStock < 25 || !product.minStock) {
+        product.minStock = 25;
+    }
+
+    product.batches.push({
+        qty: Number(history.quantity),
+        dateIn: history.createdAt || new Date(), 
+        pricePerUnit: Number(history.unitPrice || product.price || 0) 
+    });
+
     product.quantity += Number(history.quantity);
     await product.save();
 
@@ -207,7 +190,7 @@ const approveStockIn = asyncHandler(async (req, res) => {
     history.approvedBy = req.user.id;
     await history.save();
 
-    res.status(200).json({ message: "Stock In approved and Product quantity increased", history });
+    res.status(200).json({ message: "Stock In approved and new batch recorded", history });
 });
 
 // @desc    Acknowledge Stock In
@@ -228,7 +211,7 @@ const approveStockOut = asyncHandler(async (req, res) => {
     
     if (!history || history.type !== "OUT") { 
         res.status(404); 
-        throw new Error("Invalid record"); 
+        throw new Error("Data permintaan stok tidak valid."); 
     }
     if (history.status !== "pending") {
         res.status(400);
@@ -236,19 +219,58 @@ const approveStockOut = asyncHandler(async (req, res) => {
     }
     
     const product = await Product.findById(history.productId);
-    if (product.quantity < history.quantity) { 
-        res.status(400); 
-        throw new Error("Insufficient stock"); 
+
+    // 1. PENGAMAN JIKA PRODUK DIHAPUS DARI DATABASE
+    if (!product) {
+        res.status(404);
+        throw new Error("Produk tidak ditemukan di database (mungkin sudah terhapus).");
+    }
+
+    // 2. PENGAMAN UNTUK PRODUK LAMA (Mencegah Crash)
+    if (!product.batches) product.batches = [];
+    if (product.minStock < 25 || !product.minStock) {
+        product.minStock = 25;
+    }
+
+    // 3. PROSES PENGURANGAN KLOTER (BATCH)
+    if (history.batchId) {
+        const targetBatch = product.batches.find(b => b._id && b._id.toString() === history.batchId.toString());
+        
+        if (!targetBatch) {
+            res.status(404);
+            throw new Error("Kloter/Batch stok yang dipilih sudah tidak ada atau kosong.");
+        }
+        if (targetBatch.qty < history.quantity) {
+            res.status(400);
+            throw new Error(`Stok di kloter ini kurang! Sisa: ${targetBatch.qty}, Diminta: ${history.quantity}`);
+        }
+        
+        targetBatch.qty -= Number(history.quantity);
+    } else {
+        if (product.quantity < history.quantity) {
+            res.status(400);
+            throw new Error(`Stok total tidak mencukupi! Sisa: ${product.quantity}, Diminta: ${history.quantity}`);
+        }
+    }
+
+    // 4. BERSIHKAN KLOTER KOSONG & KALKULASI ULANG
+    product.batches = product.batches.filter(batch => batch.qty > 0);
+
+    if (product.batches && product.batches.length > 0) {
+        product.quantity = product.batches.reduce((sum, batch) => sum + batch.qty, 0);
+    } else if (!history.batchId) {
+        product.quantity -= Number(history.quantity);
+    } else {
+        product.quantity = 0; 
     }
     
-    product.quantity -= Number(history.quantity);
     await product.save();
 
     history.status = "approved";
     history.approvedBy = req.user.id;
     await history.save();
     
-    res.status(200).json({ message: "Stock Out approved and Product quantity decreased", history });
+    res.status(200).json({ message: "Permintaan barang keluar berhasil disetujui", history });
 });
 
 // @desc    Acknowledge Stock Out
@@ -287,7 +309,7 @@ const getStockHistory = asyncHandler(async (req, res) => {
     if (type) filter.type = type;
 
     const history = await StockHistory.find(filter)
-        .populate("productId", "name category")
+        .populate("productId", "name category sku") 
         .populate("user", "name role")
         .populate("inputBy", "name role")
         .populate("approvedBy", "name role")

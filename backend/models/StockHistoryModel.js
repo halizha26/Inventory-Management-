@@ -21,25 +21,40 @@ const stockHistorySchema = new mongoose.Schema(
             type: Number,
             required: true,
         },
-        // --- TAMBAHAN: Kolom Harga & Mata Uang ---
+        
+        // 👇 TAMBAHAN BARU: Kolom Satuan (Unit) 👇
+        unit: {
+            type: String,
+            enum: ["Pcs", "Paket"],
+            default: "Pcs", 
+        },
+
+        // --- Kolom Harga & Mata Uang ---
         unitPrice: {
             type: Number,
-            default: 0, // Default 0 supaya transaksi Stock Out (yang gak ada harga) gak error
+            default: 0, 
         },
         totalPrice: {
             type: Number,
             default: 0,
         },
-        // 👇 INI DIA KUNCI JAWABANNYA 👇
         currency: {
             type: String,
-            default: 'IDR', // Default Rupiah untuk data-data lama agar tidak error
+            default: 'IDR', 
         },
         // -----------------------------
+        
         reason: {
-            type: String, // e.g., "Purchase", "Sale", "Damage", "Return"
+            type: String, 
             required: false,
         },
+        
+        // 👇 Menyimpan ID Kloter (Batch) yang dipilih Manajemen 👇
+        batchId: {
+            type: mongoose.Schema.Types.ObjectId,
+            required: false 
+        },
+
         date: {
             type: Date,
             default: Date.now,

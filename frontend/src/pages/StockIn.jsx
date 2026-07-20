@@ -64,12 +64,12 @@ const StockIn = () => {
                     <span className="text-slate-200">➔</span>
                     <div className="flex items-center gap-2 text-blue-600 font-black uppercase tracking-wider">
                         <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">2</span>
-                        Setuju <span className="text-[10px] text-blue-400/70 font-bold">(Keuangan)</span>
+                        Setuju <span className="text-[10px] text-blue-400/70 font-bold">(Finance)</span>
                     </div>
                     <span className="text-slate-200">➔</span>
                     <div className="flex items-center gap-2 text-emerald-600 font-black uppercase tracking-wider">
                         <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">3</span>
-                        Konfirmasi <span className="text-[10px] text-emerald-400/70 font-bold">(Manajemen)</span>
+                        Konfirmasi <span className="text-[10px] text-emerald-400/70 font-bold">(Management)</span>
                     </div>
                 </div>
             </div>

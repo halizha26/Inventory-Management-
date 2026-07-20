@@ -139,10 +139,10 @@ const Register = () => {
               >
                 <option value="">Select a role</option>
                 <option value="admin">Admin</option>
-                <option value="manajemen">Manajemen</option>
+                <option value="management">Manajemen</option> {/* ✅ Ubah value jadi "management" */}
                 <option value="finance">Finance</option>
                 <option value="staff">Staff</option>
-              </select>
+              </select>   
 
               <Button
                 type="submit"
