@@ -183,13 +183,81 @@ const ProductModal = ({ isOpen, onClose, productToEdit, onSuccess, products = []
     }
   }, [productToEdit, reset, setValue, isOpen]);
 
+  // 👇 EFEK BARU: Auto-Generate SKU Sekuensial (Sesuai Standar COA NuPMK) 👇
+  useEffect(() => {
+    const currentName = watch('name');
+    const currentSku = watch('sku');
+
+    // 1. Cek apakah produk ini sudah ada di master COA
+    const isProductInDB = COA_DATABASE.some(
+        item => item.name.toLowerCase() === (currentName || '').toLowerCase()
+    );
+
+    // 2. Generate SKU berurutan jika kategori dipilih manual
+    if (!isProductInDB && kategoriUtama && !currentSku) {
+        let prefix = '';
+
+        // Menentukan Awalan (Prefix) berdasarkan hierarki COA
+        if (kategoriUtama === 'Logistik Material' || kategoriUtama === 'Learning Material') {
+            prefix = '115';
+        } else if (kategoriUtama === 'Office Asset') {
+            prefix = '124';
+        } else {
+            prefix = '999'; // Kategori custom baru di luar standar
+        }
+
+        // 3. Kumpulkan semua SKU dari master COA + produk yang sudah ada di DB
+        const allSkus = [...COA_DATABASE, ...(products || [])]
+            .map(p => p.sku || '')
+            .filter(sku => sku.startsWith(prefix));
+
+        let newSkuStr = '';
+
+        if (allSkus.length > 0) {
+            // Ambil murni angka dari SKU (Abaikan karakter huruf khusus seperti "115021-C")
+            const skuNumbers = allSkus
+                .map(sku => parseInt(sku.replace(/\D/g, ''), 10))
+                .filter(n => !isNaN(n));
+            
+            const maxSkuNumber = Math.max(...skuNumbers);
+            
+            // Auto-increment dari SKU tertinggi yang ditemukan
+            newSkuStr = (maxSkuNumber + 1).toString();
+        } else {
+            // Nomor awal default jika database untuk kategori ini masih kosong
+            newSkuStr = prefix === '115' ? '115001' : (prefix === '124' ? '12401' : '99901');
+        }
+
+        // 4. Masukkan otomatis ke kolom input SKU
+        setValue('sku', newSkuStr, { shouldValidate: true });
+    }
+  }, [kategoriUtama, watch, setValue, products]);
+
   const onSubmit = async (data) => {
     try {
-      // Validasi dinamis (mencegah user lupa mengisi sub-kategori)
+      // 1. Validasi dinamis kategori (Kode yang sudah kamu miliki)
       if (hasSubCategories && !subKategori) { toast.error('Mohon lengkapi Merek / Sub-Kategori!'); return; }
       if (hasDetailCategories && !detailKategori) { toast.error('Mohon lengkapi Modul / Detail Barang!'); return; }
       if (hasVarian && !varianKategori) { toast.error('Barang ini memiliki Varian Khusus, mohon dipilih!'); return; }
 
+      // 👇 2. TAMBAHKAN VALIDASI MUTLAK MASTER COA DI SINI 👇
+      const isSkuInCOA = COA_DATABASE.find(item => item.sku === data.sku);
+      const isNameInCOA = COA_DATABASE.find(item => item.name.toLowerCase() === data.name.toLowerCase());
+
+      // Skenario A: User pakai SKU Master COA, tapi mengubah namanya (Kasus "Gjkiiftset" di gambar)
+      if (isSkuInCOA && isSkuInCOA.name.toLowerCase() !== data.name.toLowerCase()) {
+          toast.error(`⛔ Validasi Ditolak: SKU ${data.sku} adalah kode mutlak untuk "${isSkuInCOA.name}".`);
+          return; // Hentikan proses save
+      }
+
+      // Skenario B: User pakai Nama Master COA, tapi mengubah SKU-nya jadi angka lain
+      if (isNameInCOA && isNameInCOA.sku !== data.sku) {
+          toast.error(`⛔ Validasi Ditolak: "${isNameInCOA.name}" adalah data Master dengan SKU paten ${isNameInCOA.sku}.`);
+          return; // Hentikan proses save
+      }
+      // 👆 SELESAI TAMBAHAN VALIDASI COA 👆
+
+      // 3. Proses eksekusi ke Backend (Kode yang sudah kamu miliki)
       if (productToEdit) {
         await productService.update(productToEdit._id, data);
         toast.success('Product updated successfully');

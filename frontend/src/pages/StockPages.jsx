@@ -331,18 +331,29 @@ const StockPages = ({ type }) => {
                       ))}
                     </td>
 
-                    {/* TOTAL BIAYA */}
+                    {/* TOTAL BIAYA (DENGAN HIERARKI VISUAL & KONVERSI OTOMATIS) */}
                     {(type === 'IN' || type === 'HISTORY') && (
                       <td className="px-0 py-0 border-r border-slate-100 align-top">
                         {group.items.map((item, idx) => {
                           const isUSD = item.currency === "USD";
                           return (
-                            <div key={idx} className={`px-4 flex flex-col items-end justify-center min-h-[50px] ${idx !== group.items.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                            <div key={idx} className={`px-4 py-3 flex flex-col items-end justify-center min-h-[50px] ${idx !== group.items.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                              {/* 1. Angka Utama (Sesuai input asli) */}
                               <span className="text-sm font-black text-slate-900 whitespace-nowrap">
                                 {isUSD ? '$ ' : 'Rp '} 
                                 {item.totalPrice?.toLocaleString('id-ID')}
                               </span>
-                              <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap italic mt-0.5">
+
+                              {/* 2. Nilai Konversi Otomatis (Menggunakan data convertedTotalCost dari backend) */}
+                              {item.convertedTotalCost !== null && item.convertedTotalCost !== undefined && (
+                                <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap mt-0.5">
+                                  ≈ {isUSD ? 'Rp ' : '$ '}
+                                  {item.convertedTotalCost?.toLocaleString('id-ID', { maximumFractionDigits: 2 })}
+                                </span>
+                              )}
+
+                              {/* 3. Harga Satuan (@) di baris bawah */}
+                              <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap italic mt-1">
                                 @{isUSD ? '$ ' : 'Rp '}
                                 {item.unitPrice?.toLocaleString('id-ID')}
                               </span>

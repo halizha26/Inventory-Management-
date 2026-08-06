@@ -1,5 +1,5 @@
 // File: backend/controllers/exchangeRateController.js
-const ExchangeRate = require('../models/ExchangeRate');
+const ExchangeRate = require('../models/ExchangeRateModel'); // Pastikan nama file Model sesuai
 const axios = require('axios');
 
 // 1. Fungsi untuk Dashboard Frontend (Mengambil kurs aktif saat ini dari database)
@@ -9,7 +9,12 @@ exports.getActiveRate = async (req, res) => {
         
         // Jika database masih kosong (baru pertama kali jalan), buat data default
         if (!currentRate) {
-            currentRate = await ExchangeRate.create({ rate: 17367, source: 'Manual_Admin' });
+            currentRate = await ExchangeRate.create({ 
+                currencyPair: 'USD_TO_IDR',
+                rate: 17944, 
+                source: 'Manual_Admin',
+                lastUpdated: Date.now()
+            });
         }
         
         res.status(200).json({ success: true, data: currentRate });
@@ -21,7 +26,7 @@ exports.getActiveRate = async (req, res) => {
 // 2. Fungsi API Otomatis (Menarik data dari ExchangeRate-API)
 exports.syncWithApi = async (req, res) => {
     try {
-        // Menggunakan endpoint publik (open) dari ExchangeRate-API
+        // Menggunakan endpoint publik dari ExchangeRate-API
         const response = await axios.get('https://open.er-api.com/v6/latest/USD');
         const idrRate = response.data.rates.IDR; // Mengekstrak kurs Rupiah
 
@@ -33,7 +38,7 @@ exports.syncWithApi = async (req, res) => {
                 source: 'API_Otomatis', 
                 lastUpdated: Date.now() 
             },
-            { new: true, upsert: true } // upsert: buat baru jika belum ada
+            { new: true, upsert: true }
         );
 
         res.status(200).json({ 
@@ -50,6 +55,10 @@ exports.syncWithApi = async (req, res) => {
 exports.updateManualRate = async (req, res) => {
     try {
         const { newRate } = req.body;
+
+        if (!newRate) {
+            return res.status(400).json({ success: false, message: 'Nilai kurs baru harus diisi' });
+        }
 
         const updatedRate = await ExchangeRate.findOneAndUpdate(
             { currencyPair: 'USD_TO_IDR' },

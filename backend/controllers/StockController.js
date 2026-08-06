@@ -3,6 +3,8 @@ const Product = require("../models/ProductModel");
 const StockHistory = require("../models/StockHistoryModel");
 const Notification = require("../models/NotificationModel"); 
 const nodemailer = require("nodemailer"); 
+// Import Model Kurs
+const ExchangeRate = require('../models/ExchangeRateModel');
 
 // --- KONFIGURASI EMAIL (NODEMAILER) ---
 const transporter = nodemailer.createTransport({
@@ -48,6 +50,32 @@ const stockIn = asyncHandler(async (req, res) => {
     const uPrice = Number(unitPrice) || 0;
     const tPrice = uPrice * Number(quantity);
 
+    // Logika Snapshot Kurs & Konversi Mata Uang
+    let currentRate = null;
+    let convertedCost = null;
+    const selectedCurrency = currency || "IDR";
+
+    try {
+        // Mengambil kurs terbaru dari database berdasarkan lastUpdated
+        const activeRateData = await ExchangeRate.findOne().sort({ lastUpdated: -1 });
+        
+        if (activeRateData && activeRateData.rate) {
+            currentRate = activeRateData.rate;
+
+            // Kalkulasi Konversi:
+            if (selectedCurrency === "USD") {
+                // Jika input $, dikali kurs untuk dapat nilai Rp
+                convertedCost = tPrice * currentRate;
+            } else if (selectedCurrency === "IDR") {
+                // Jika input Rp, dibagi kurs untuk dapat nilai $
+                convertedCost = tPrice / currentRate;
+            }
+        }
+    } catch (error) {
+        console.error("Gagal mengambil data kurs dari database:", error.message);
+        // Sistem tetap lanjut menyimpan data (Fault Tolerance) meskipun gagal ambil kurs
+    }
+
     const history = await StockHistory.create({
         user: req.user.id,
         productId,
@@ -55,7 +83,9 @@ const stockIn = asyncHandler(async (req, res) => {
         quantity,
         unitPrice: uPrice,
         totalPrice: tPrice,
-        currency: currency || "IDR", 
+        currency: selectedCurrency, 
+        exchangeRateSnapshot: currentRate, // Menyimpan kurs saat ini
+        convertedTotalCost: convertedCost, // Menyimpan hasil konversi
         reason,
         status: "pending",
         inputBy: inputBy || req.user.id,
@@ -93,7 +123,7 @@ const stockIn = asyncHandler(async (req, res) => {
 
 // @desc    Stock Out - Staff input (status: pending)
 const stockOut = asyncHandler(async (req, res) => {
-    const { productId, quantity, reason, salesOrderNumber, inputBy, batchId } = req.body;
+    const { productId, quantity, reason, salesOrderNumber, inputBy, batchId, unitPrice, currency } = req.body;
 
     if (!quantity || quantity <= 0) {
         res.status(400);
@@ -111,11 +141,40 @@ const stockOut = asyncHandler(async (req, res) => {
         throw new Error("Insufficient stock");
     }
 
+    const uPrice = Number(unitPrice) || 0;
+    const tPrice = uPrice * Number(quantity);
+
+    // Logika Snapshot Kurs & Konversi Mata Uang (Sama dengan Stock In)
+    let currentRate = null;
+    let convertedCost = null;
+    const selectedCurrency = currency || "IDR";
+
+    try {
+        const activeRateData = await ExchangeRate.findOne().sort({ lastUpdated: -1 });
+        
+        if (activeRateData && activeRateData.rate) {
+            currentRate = activeRateData.rate;
+
+            if (selectedCurrency === "USD") {
+                convertedCost = tPrice * currentRate;
+            } else if (selectedCurrency === "IDR") {
+                convertedCost = tPrice / currentRate;
+            }
+        }
+    } catch (error) {
+        console.error("Gagal mengambil data kurs dari database:", error.message);
+    }
+
     const history = await StockHistory.create({
         user: req.user.id,
         productId,
         type: "OUT",
         quantity,
+        unitPrice: uPrice,
+        totalPrice: tPrice,
+        currency: selectedCurrency, 
+        exchangeRateSnapshot: currentRate,
+        convertedTotalCost: convertedCost,
         reason,
         salesOrderNumber,
         batchId, 

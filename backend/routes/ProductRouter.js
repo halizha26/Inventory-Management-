@@ -6,7 +6,8 @@ const {
     getProductById,
     updateProduct,
     deleteProduct,
-    getLowStockProducts
+    getLowStockProducts,
+    generateAutoSKU // 👇 Ditambahkan import
 } = require("../controllers/ProductController");
 const { protect } = require("../middlewares/ProtectRouters");
 const { adminOnly } = require("../middlewares/AdminMiddleware");
@@ -16,9 +17,9 @@ router.route("/")
     .get(protect, getProducts)
     .post(protect, adminOnly, createProduct);
 
-// Specific routes must come before /:id to avoid collision if they look like IDs (though "low-stock" is string vs ID)
-// But best practice is specific first
+// 👇 Rute spesifik harus DI ATAS /:id agar tidak terjadi bentrok 👇
 router.get("/low-stock", protect, getLowStockProducts);
+router.get("/generate-sku", protect, generateAutoSKU); 
 
 router.route("/:id")
     .get(protect, getProductById)

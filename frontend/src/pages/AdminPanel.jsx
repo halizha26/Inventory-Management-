@@ -1,29 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Save, RefreshCw, ShieldAlert } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import axios from 'axios';
+import exchangeRateService from '../services/exchangeRateService'; // Gunakan service yang baru dibuat
 
 const AdminPanel = () => {
-  // --- STATE KURS (DIGABUNGKAN) ---
   const [usdRate, setUsdRate] = useState(15500);
   const [inputRate, setInputRate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState('');
 
-  // 1. Ambil kurs dari database (API Settings yang baru kita buat)
+  // 1. Ambil kurs dari database menggunakan Service
   useEffect(() => {
     fetchUsdRate();
   }, []);
 
   const fetchUsdRate = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/settings'); 
-      if (response.data && response.data.usdRate) {
-        setUsdRate(response.data.usdRate);
-        if (response.data.lastSyncDate) {
-          setLastUpdated(new Date(response.data.lastSyncDate).toLocaleString('id-ID'));
-        }
+      const data = await exchangeRateService.getCurrentRate();
+      if (data && data.rate) {
+        setUsdRate(data.rate);
+        setLastUpdated(new Date(data.lastUpdated || data.updatedAt).toLocaleString('id-ID'));
       }
     } catch (error) {
       console.error('Gagal memuat kurs aktif:', error);
@@ -31,15 +28,15 @@ const AdminPanel = () => {
     }
   };
 
-  // 2. Fungsi Sinkronisasi Otomatis ke Bank Indonesia
+  // 2. Fungsi Sinkronisasi Otomatis ke API Global via Service
   const handleSyncBI = async () => {
     setIsSyncing(true);
     try {
-      const response = await axios.post("http://localhost:3000/api/settings/sync");
-      if (response.status === 200) {
+      const response = await exchangeRateService.syncRate();
+      if (response && response.success) {
         toast.success("Berhasil update kurs terbaru dari Bank Indonesia!");
-        setUsdRate(response.data.data.kurs_tengah_disimpan);
-        setLastUpdated(new Date().toLocaleString('id-ID'));
+        setUsdRate(response.data.rate);
+        setLastUpdated(new Date(response.data.lastUpdated || response.data.updatedAt).toLocaleString('id-ID'));
       }
     } catch (err) {
       toast.error("Kesalahan jaringan saat menghubungi server BI.");
@@ -48,7 +45,7 @@ const AdminPanel = () => {
     }
   };
 
-  // 3. Fungsi untuk menyimpan perubahan kurs manual (Fallback)
+  // 3. Fungsi untuk menyimpan perubahan kurs manual via Service
   const handleSaveRate = async (e) => {
     e.preventDefault();
     const parsedRate = parseInt(String(inputRate).replace(/[^0-9]/g, ''), 10);
@@ -60,14 +57,11 @@ const AdminPanel = () => {
 
     setIsLoading(true);
     try {
-      // Catatan: Jika di masa depan kamu ingin mengubah rute manual ini agar tersimpan
-      // di API Settings juga, kamu cukup menyesuaikan rutenya di backend.
-      // Saat ini kita biarkan mengarah ke rute lama-mu, tapi mengubah state visualnya.
-      const response = await axios.post('http://localhost:3000/api/exchange-rate', { rate: parsedRate });
+      const response = await exchangeRateService.updateManualRate(parsedRate);
       
-      if (response.data && response.data.rate) {
+      if (response && response.success) {
         setUsdRate(response.data.rate);
-        setLastUpdated(new Date().toLocaleString('id-ID') + " (Manual)");
+        setLastUpdated(new Date(response.data.lastUpdated || response.data.updatedAt).toLocaleString('id-ID') + " (Manual)");
         setInputRate('');
         toast.success(`Kurs USD Berhasil Diperbarui secara manual menjadi Rp ${parsedRate.toLocaleString('id-ID')}`);
       }

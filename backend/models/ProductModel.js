@@ -41,6 +41,12 @@ const productSchema = new mongoose.Schema(
             required: [true, "Please add a category"],
             trim: true,
         },
+        // 👇 TAMBAHAN BARU: subCategory wajib ada di Model agar terbaca oleh database 👇
+        subCategory: {
+            type: String,
+            required: false,
+            trim: true,
+        },
         price: {
             type: Number,
             required: [true, "Please add a price"],
@@ -51,25 +57,18 @@ const productSchema = new mongoose.Schema(
             enum: ["IDR", "USD"],
             default: "IDR",
         },
-        // 👇 TAMBAHAN BARU: Kolom Satuan (Unit) 👇
         unit: {
             type: String,
             enum: ["Pcs", "Paket"],
             default: "Pcs",
         },
-        
-        // 👇 TOTAL STOK (Tetap dipertahankan untuk tampilan UI Staf) 👇
         quantity: {
             type: Number,
             required: [true, "Please add a quantity"],
             min: [0, "Quantity must be greater than or equal to 0"],
             default: 0,
         },
-
-        // 👇 INTEGRASI BATCHES (Kloter) 👇
         batches: [batchSchema],
-
-        // 👇 PERUBAHAN: Batas minimum stok menjadi 25 👇
         minStock: {
             type: Number,
             required: [true, "Please add a minimum stock level"],

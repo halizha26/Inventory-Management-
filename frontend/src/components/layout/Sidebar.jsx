@@ -11,7 +11,6 @@ import {
   X,
   PieChart,
   Users2,
-  BoxesIcon,
   ShieldAlert // Icon untuk Admin Panel
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -35,7 +34,20 @@ const Sidebar = ({ isOpen, onClose }) => {
       try {
         const data = await productService.getAll();
         const products = data.products || [];
-        const count = products.filter(p => p.quantity <= 10).length;
+        
+        // 👇 PERUBAHAN LOGIKA FILTER DI SINI 👇
+        // Telah disamakan persis dengan halaman LowStock.jsx
+        const count = products.filter(p => {
+            const isLowOrOut = p.quantity <= 25; 
+            const categoryName = p.category ? String(p.category).toLowerCase() : '';
+            
+            // Mendeteksi Logistik Material ATAU Learning Material
+            const isTargetCategory = categoryName.includes('logistik material') || categoryName.includes('learning material');
+            
+            return isLowOrOut && isTargetCategory;
+        }).length;
+        // 👆 ------------------------------- 👆
+
         if (isMounted) setLowStockCount(count);
       } catch (error) {
         console.error("Failed to fetch products for sidebar:", error);

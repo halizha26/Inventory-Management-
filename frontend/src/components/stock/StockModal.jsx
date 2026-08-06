@@ -2,30 +2,22 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { X, ArrowUpCircle, ArrowDownCircle, Plus, Trash2, Calculator, CreditCard, Wallet, Layers, ChevronDown, CheckCircle, Hash } from 'lucide-react';
+import { X, ArrowUpCircle, ArrowDownCircle, Plus, Trash2, Calculator, Wallet, Layers, ChevronDown, Hash, Search, Lock } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 const MotionDiv = motion.div;
 import { toast } from 'react-hot-toast';
 
-import Input from '../common/Input';
 import stockService from '../../services/stockService';
 import productService from '../../services/productService';
 import { useAuth } from '../../context/AuthContext';
 
-// 👇 STRUKTUR HIERARKI KATEGORI SESUAI COA MASTER NuPMK 👇
+// Endpoint Backend
+const API_BASE_URL = import.meta.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+
 const CATEGORY_TREE = {
-  "Logistik Material": [
-    "Inventory Class Delivery"
-  ],
-  "Office Asset": [
-    "Fixed Assets",
-    "Office Equipment"
-  ],
-  "Learning Material": [
-    "CELEMI",
-    "NuPMK",
-    "Industry Master"
-  ]
+  "Logistik Material": ["Inventory Class Delivery"],
+  "Office Asset": ["Fixed Assets", "Office Equipment"],
+  "Learning Material": ["CELEMI", "NuPMK", "Industry Master"]
 };
 
 const formatRibuan = (angka) => {
@@ -39,7 +31,6 @@ const parseRibuan = (string) => {
   return parseInt(String(string).replace(/\./g, ''), 10) || 0;
 };
 
-// Skema Form Validation
 const itemSchema = yup.object({
   mainCategory: yup.string().required('Kategori utama wajib dipilih'),
   subCategory: yup.string().optional(), 
@@ -93,9 +84,7 @@ const SearchableSelect = ({ label, name, control, error, options, disabled, plac
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -108,10 +97,7 @@ const SearchableSelect = ({ label, name, control, error, options, disabled, plac
       render={({ field: { onChange, value } }) => {
         const selectedOption = options.find(opt => opt.value === value);
         const displayValue = isOpen ? searchTerm : (selectedOption ? selectedOption.label : '');
-        
-        const filteredOptions = options.filter(opt =>
-          opt.label.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        const filteredOptions = options.filter(opt => opt.label.toLowerCase().includes(searchTerm.toLowerCase()));
 
         return (
           <div className="w-full flex flex-col gap-1.5 relative space-y-1" ref={wrapperRef}>
@@ -122,16 +108,8 @@ const SearchableSelect = ({ label, name, control, error, options, disabled, plac
                 disabled={disabled}
                 placeholder={placeholder}
                 value={displayValue}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setIsOpen(true);
-                }}
-                onClick={() => {
-                  if (!disabled) {
-                    setIsOpen(true);
-                    setSearchTerm('');
-                  }
-                }}
+                onChange={(e) => { setSearchTerm(e.target.value); setIsOpen(true); }}
+                onClick={() => { if (!disabled) { setIsOpen(true); setSearchTerm(''); } }}
                 className={`w-full px-4 h-[56px] border-2 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 focus:outline-none bg-white text-sm font-bold shadow-sm transition-all pr-10 ${
                   disabled ? 'text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed' : 'text-slate-900 border-slate-200 cursor-pointer'
                 } ${error ? 'border-red-500' : ''}`}
@@ -143,10 +121,7 @@ const SearchableSelect = ({ label, name, control, error, options, disabled, plac
               <AnimatePresence>
                 {isOpen && !disabled && (
                   <MotionDiv
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    transition={{ duration: 0.1 }}
+                    initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.1 }}
                     className="absolute z-[100] w-full mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-xl max-h-52 overflow-y-auto"
                   >
                     {filteredOptions.length > 0 ? (
@@ -154,23 +129,15 @@ const SearchableSelect = ({ label, name, control, error, options, disabled, plac
                         {filteredOptions.map((opt) => (
                           <li
                             key={opt.value}
-                            onClick={() => {
-                              onChange(opt.value);
-                              setIsOpen(false);
-                              setSearchTerm('');
-                            }}
-                            className={`px-5 py-3 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 font-bold text-sm transition-colors ${
-                              value === opt.value ? 'bg-blue-100 text-blue-800' : 'text-slate-800'
-                            }`}
+                            onClick={() => { onChange(opt.value); setIsOpen(false); setSearchTerm(''); }}
+                            className={`px-5 py-3 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 font-bold text-sm transition-colors ${value === opt.value ? 'bg-blue-100 text-blue-800' : 'text-slate-800'}`}
                           >
                             {opt.label}
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <div className="px-4 py-5 text-center text-slate-500 font-bold italic text-sm">
-                        Barang tidak ditemukan...
-                      </div>
+                      <div className="px-4 py-5 text-center text-slate-500 font-bold italic text-sm">Barang tidak ditemukan...</div>
                     )}
                   </MotionDiv>
                 )}
@@ -190,14 +157,18 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
   const [products, setProducts] = useState([]);
   const [stockInType, setStockInType] = useState('NEW_PURCHASE'); 
 
+  // 👇 STATE BARU UNTUK FITUR SO 👇
+  const [isSoLocked, setIsSoLocked] = useState(false);
+  const [isSoLoading, setIsSoLoading] = useState(false);
+
   const defaultItem = { mainCategory: '', subCategory: '', productId: '', quantity: '', unitPrice: '', currency: 'IDR', batchId: '', unit: 'Pcs' };
 
-  const { register, control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm({
+  const { register, control, handleSubmit, reset, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm({
     resolver: yupResolver(isStockIn ? schemaIn : schemaOut),
     defaultValues: { items: [defaultItem] }
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "items"
   });
@@ -220,6 +191,7 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
     if (isOpen) {
       reset({ items: [defaultItem], reason: '', salesOrderNumber: '' });
       setStockInType('NEW_PURCHASE'); 
+      setIsSoLocked(false); // Reset kunci SO setiap modal dibuka
       const load = async () => {
         try {
           const prodData = await productService.getAll();
@@ -238,6 +210,69 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
     setValue('reason', t === 'INTERNAL_RETURN' ? 'Pengembalian sisa material event / training' : '');
   };
 
+  // 👇 FUNGSI SAKTI UNTUK MENCARI DAN MENGUNCI DATA SO 👇
+  const handleSearchSO = async () => {
+    const soNumber = getValues('salesOrderNumber');
+    if (!soNumber) {
+        toast.error("Ketik nomor SO terlebih dahulu!");
+        return;
+    }
+
+    setIsSoLoading(true);
+    try {
+        const res = await fetch(`${API_BASE_URL}/sales-orders/${soNumber}`);
+        const json = await res.json();
+
+        if (!json.success) {
+            toast.error(json.message || 'Nomor SO tidak ditemukan di sistem.');
+            setIsSoLocked(false);
+            return;
+        }
+
+        const soData = json.data;
+        toast.success(`Berhasil! ${soData.items.length} barang dari SO ditemukan.`);
+        
+        // Memetakan data dari SO ke format form gudang kita
+        const mappedItems = soData.items.map(soItem => {
+            // Mencocokkan nama barang dari SO dengan database Gudang
+            const matchedProduct = products.find(p => p.name.toLowerCase() === soItem.productName.toLowerCase());
+            
+            let mainCat = '';
+            let subCat = '';
+            
+            if (matchedProduct && matchedProduct.category) {
+                const parts = matchedProduct.category.split(' - ');
+                mainCat = parts[0] ? parts[0].trim() : '';
+                subCat = parts[1] ? parts[1].trim() : '';
+            }
+
+            return {
+                mainCategory: mainCat,
+                subCategory: subCat,
+                productId: matchedProduct ? matchedProduct._id : '',
+                quantity: soItem.quantity,
+                unit: soItem.unit || 'Pcs',
+                batchId: '', // Tetap kosong agar gudang wajib pilih kloter
+                unitPrice: '',
+                currency: 'IDR'
+            };
+        });
+
+        // Peringatan jika ada nama barang dari divisi sales yang tidak terdaftar di gudang
+        const hasUnmatched = mappedItems.some(i => !i.productId);
+        if (hasUnmatched) toast.error("Perhatian: Ada barang dari SO yang tidak terdaftar di master gudang!");
+
+        // Timpa dan Kunci form
+        replace(mappedItems);
+        setIsSoLocked(true);
+
+    } catch (error) {
+        toast.error('Gagal menghubungi server SO. Pastikan backend menyala.');
+    } finally {
+        setIsSoLoading(false);
+    }
+  };
+
   const onSubmit = async (data) => {
     try {
       if (!isStockIn) {
@@ -249,17 +284,28 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
       }
 
       const promises = data.items.map(item => {
+        let outUnitPrice = 0;
+        let outCurrency = 'IDR';
+
+        if (!isStockIn && item.batchId) {
+            const prod = products.find(p => p._id === item.productId);
+            if (prod && prod.batches) {
+                const selectedBatch = prod.batches.find(b => b._id === item.batchId);
+                if (selectedBatch) {
+                    outUnitPrice = selectedBatch.pricePerUnit || 0;
+                    outCurrency = selectedBatch.currency || 'IDR';
+                }
+            }
+        }
+
         const payload = { 
           reason: data.reason,
           inputBy: user?._id || user?.id,
           productId: item.productId, 
           quantity: item.quantity,
           unit: item.unit,
-          ...(isStockIn && stockInType === 'NEW_PURCHASE' ? { 
-            unitPrice: Number(item.unitPrice),
-            currency: item.currency 
-          } : {}),
-          ...(!isStockIn ? { salesOrderNumber: data.salesOrderNumber, batchId: item.batchId } : {}) 
+          ...(isStockIn && stockInType === 'NEW_PURCHASE' ? { unitPrice: Number(item.unitPrice), currency: item.currency } : {}),
+          ...(!isStockIn ? { salesOrderNumber: data.salesOrderNumber, batchId: item.batchId, unitPrice: outUnitPrice, currency: outCurrency } : {}) 
         };
         return isStockIn ? stockService.stockIn(payload) : stockService.stockOut(payload);
       });
@@ -339,10 +385,44 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
                             <input type="text" placeholder="Contoh: Kebutuhan kelas Training BRI..." className="w-full px-4 py-4 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 focus:outline-none text-sm font-bold text-slate-900 shadow-sm" {...register('reason')} />
                             {errors.reason && <p className="text-[11px] font-bold text-red-600 uppercase mt-1">{errors.reason.message}</p>}
                         </div>
+                        
+                        {/* 👇 INPUT SO YANG BARU DENGAN TOMBOL CARI & BATAL 👇 */}
                         {!isStockIn && (
                             <div className="w-full space-y-1.5">
                                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">No. Pesanan / SO (Sales Order)</label>
-                                <input type="text" placeholder="SO-2026-001" className="w-full px-4 py-4 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 focus:outline-none text-sm font-bold text-slate-900 uppercase shadow-sm" {...register('salesOrderNumber')} />
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        disabled={isSoLocked}
+                                        placeholder="Ketik lalu klik cari (Cth: SO-2026-001)" 
+                                        className="w-full px-4 py-4 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 focus:outline-none text-sm font-bold text-slate-900 uppercase shadow-sm disabled:bg-slate-100 disabled:text-slate-500" 
+                                        {...register('salesOrderNumber')} 
+                                    />
+                                    {!isSoLocked ? (
+                                        <button 
+                                            type="button" 
+                                            onClick={handleSearchSO}
+                                            disabled={isSoLoading}
+                                            className="px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-sm"
+                                        >
+                                            {isSoLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Search size={20} />}
+                                            <span className="hidden sm:block">Cari</span>
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                setIsSoLocked(false);
+                                                setValue('salesOrderNumber', '');
+                                                replace([defaultItem]); 
+                                            }}
+                                            className="px-5 bg-red-100 text-red-600 hover:bg-red-200 border-2 border-red-200 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
+                                        >
+                                            <X size={20} />
+                                            <span className="hidden sm:block">Batal</span>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -350,7 +430,15 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
 
                   {/* PRODUCTS LIST */}
                   <div className="space-y-5">
-                    <h4 className="font-black text-slate-800 uppercase text-[12px] tracking-widest ml-1 shadow-sm px-4 py-2 bg-white w-fit rounded-lg border-2 border-slate-200">Daftar Input Barang</h4>
+                    <div className="flex items-center gap-3">
+                        <h4 className="font-black text-slate-800 uppercase text-[12px] tracking-widest ml-1 shadow-sm px-4 py-2 bg-white w-fit rounded-lg border-2 border-slate-200">Daftar Input Barang</h4>
+                        {/* Status indikator terkunci */}
+                        {!isStockIn && isSoLocked && (
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[10px] font-black uppercase tracking-widest animate-pulse">
+                                <Lock size={12} /> Terkunci oleh SO
+                            </div>
+                        )}
+                    </div>
 
                     {fields.map((field, index) => {
                       const currentUnit = watch(`items.${index}.unit`) || 'Pcs';
@@ -359,21 +447,13 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
                       const selectedProdId = watch(`items.${index}.productId`);
                       
                       const selectedProductObj = products.find(p => p._id === selectedProdId);
-
-                      // Ambil daftar sub-kategori berdasarkan Kategori Utama pilihan user
                       const subCatList = selectedMainCat ? CATEGORY_TREE[selectedMainCat] : [];
 
-                      // FILTER PRODUK BERDASARKAN HIERARKI KATEGORI SECARA PRESISI
                       const filteredProducts = products.filter(p => {
                         if (!selectedMainCat) return false;
                         const catString = p.category || '';
-                        
-                        // Harus diawali dengan Kategori Utama
                         if (!catString.startsWith(selectedMainCat)) return false;
-                        
-                        // Jika ada sub-kategori terpilih, harus mengandung kata sub-kategori tersebut
                         if (selectedSubCat && !catString.includes(selectedSubCat)) return false;
-                        
                         return true;
                       });
 
@@ -384,20 +464,20 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
 
                       return (
                         <div key={field.id} className="relative p-6 rounded-2xl border-2 border-slate-200 flex flex-col gap-6 bg-white shadow-md animate-in slide-in-from-bottom-5 duration-300">
-                          {fields.length > 1 && (
+                          {fields.length > 1 && !(!isStockIn && isSoLocked) && (
                             <button type="button" onClick={() => remove(index)} className="absolute -top-3 -right-3 bg-red-600 text-white p-2 rounded-xl border-2 border-white shadow-lg active:scale-95 transition-all">
                               <Trash2 size={16} strokeWidth={3} />
                             </button>
                           )}
 
-                          {/* FLOW TIGA DROPDOWN (Kategori Utama -> Sub -> Barang) */}
+                          {/* KATEGORI DAN BARANG */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                            
                             <SelectField 
                               label="Kategori Utama" 
                               name={`items.${index}.mainCategory`} 
                               registerFn={register} 
                               error={errors?.items?.[index]?.mainCategory}
+                              disabled={!isStockIn && isSoLocked}
                               onChangeCustom={() => {
                                 setValue(`items.${index}.subCategory`, '');
                                 setValue(`items.${index}.productId`, '');
@@ -412,7 +492,7 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
                               label="Sub-Kategori" 
                               name={`items.${index}.subCategory`} 
                               registerFn={register} 
-                              disabled={subCatList.length === 0}
+                              disabled={subCatList.length === 0 || (!isStockIn && isSoLocked)}
                               onChangeCustom={() => {
                                 setValue(`items.${index}.productId`, '');
                                 setValue(`items.${index}.batchId`, ''); 
@@ -428,12 +508,12 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
                               control={control} 
                               error={errors?.items?.[index]?.productId} 
                               options={productOptions}
-                              disabled={!selectedMainCat}
+                              disabled={!selectedMainCat || (!isStockIn && isSoLocked)}
                               placeholder={!selectedMainCat ? 'Pilih Kategori Terlebih Dahulu' : 'Ketik nama barang...'}
                             />
                           </div>
 
-                          {/* DETEKSI KODE SKU OTOMATIS & BADGE STATUS DATABASE */}
+                          {/* DETEKSI KODE SKU OTOMATIS & BADGE STATUS */}
                           {selectedProductObj && (
                             <div className="p-4 bg-slate-50 border-2 border-slate-200 rounded-xl flex flex-wrap items-center gap-6 shadow-inner animate-in fade-in duration-300">
                                 <div className="flex items-center gap-2">
@@ -454,10 +534,9 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
                             </div>
                           )}
 
-                          {/* ROW HARGA & KUANTITAS (PIXEL PERFECT DIMENSION) */}
+                          {/* ROW HARGA/KLOTER & KUANTITAS */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                             
-                            {/* HARGA BELI / PILIH KLOTER */}
                             {isStockIn && stockInType === 'NEW_PURCHASE' ? (
                                 <div className="w-full flex flex-col">
                                   <div className="h-[24px] flex items-center mb-2">
@@ -478,11 +557,12 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
                                   </div>
                                 </div>
                             ) : !isStockIn && selectedProductObj ? (
-                                <div className="w-full flex flex-col">
+                                <div className="w-full flex flex-col relative">
                                   <div className="h-[24px] flex items-center mb-2">
                                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Pilih Sumber Kloter Masuk <span className="text-red-500">*</span></label>
                                   </div>
-                                  <select required {...register(`items.${index}.batchId`)} className="w-full px-4 h-[56px] border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 focus:outline-none bg-white text-sm font-bold text-slate-900 shadow-sm cursor-pointer">
+                                  {/* Select ini sengaja TIDAK dikunci agar gudang bisa mengatur FIFO */}
+                                  <select required {...register(`items.${index}.batchId`)} className="w-full px-4 h-[56px] border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 focus:outline-none bg-white text-sm font-bold text-slate-900 shadow-sm cursor-pointer relative z-10">
                                     <option value="" disabled>-- Pilih Sumber Stok Terdaftar --</option>
                                     {selectedProductObj.batches?.filter(b => b.qty > 0).map((batch, bIdx) => (
                                         <option key={batch._id || bIdx} value={batch._id}>
@@ -497,18 +577,33 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
                                 </div>
                             )}
 
-                            {/* JUMLAH INPUT + TOGGLE SATUAN */}
+                            {/* JUMLAH INPUT */}
                             <div className="w-full flex flex-col">
                                 <div className="h-[24px] flex items-center justify-between mb-2">
                                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Jumlah {isStockIn ? 'Masuk' : 'Keluar'}</label>
                                     <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 shadow-inner">
                                         {['Pcs', 'Paket'].map(u => (
-                                            <button key={u} type="button" onClick={() => setValue(`items.${index}.unit`, u)} className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-md transition-all duration-300 ${currentUnit === u ? (isStockIn ? 'bg-emerald-600 text-white shadow-sm' : 'bg-red-600 text-white shadow-sm') : 'text-slate-500 hover:bg-slate-200'}`}>{u}</button>
+                                            <button 
+                                              key={u} 
+                                              type="button" 
+                                              disabled={!isStockIn && isSoLocked}
+                                              onClick={() => setValue(`items.${index}.unit`, u)} 
+                                              className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-md transition-all duration-300 disabled:cursor-not-allowed ${currentUnit === u ? (isStockIn ? 'bg-emerald-600 text-white shadow-sm' : 'bg-red-600 text-white shadow-sm') : 'text-slate-500 hover:bg-slate-200'}`}
+                                            >
+                                              {u}
+                                            </button>
                                         ))}
                                     </div>
                                 </div>
                                 <div className="relative h-[56px]">
-                                  <input type="number" min="1" placeholder="0" className="w-full h-full pl-4 pr-16 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 focus:outline-none font-black text-2xl text-slate-900 transition-all shadow-sm bg-white" {...register(`items.${index}.quantity`)} />
+                                  <input 
+                                    type="number" 
+                                    min="1" 
+                                    placeholder="0" 
+                                    disabled={!isStockIn && isSoLocked}
+                                    className="w-full h-full pl-4 pr-16 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 focus:outline-none font-black text-2xl text-slate-900 transition-all shadow-sm bg-white disabled:bg-slate-100 disabled:text-slate-500" 
+                                    {...register(`items.${index}.quantity`)} 
+                                  />
                                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                                       <span className="text-sm font-black text-slate-300 uppercase tracking-widest">{currentUnit}</span>
                                   </div>
@@ -520,13 +615,16 @@ const StockModal = ({ isOpen, onClose, type = 'IN', onSuccess }) => {
                       );
                     })}
 
-                    <button
-                      type="button"
-                      onClick={() => append(defaultItem)}
-                      className="w-full py-5 border-4 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold text-[12px] hover:border-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-all flex items-center justify-center gap-3 uppercase tracking-wider bg-white shadow-sm"
-                    >
-                      <Plus size={20} strokeWidth={3} /> Tambah Masukan Barang Lain
-                    </button>
+                    {/* Tombol Tambah disembunyikan jika SO dikunci */}
+                    {!(!isStockIn && isSoLocked) && (
+                        <button
+                          type="button"
+                          onClick={() => append(defaultItem)}
+                          className="w-full py-5 border-4 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold text-[12px] hover:border-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-all flex items-center justify-center gap-3 uppercase tracking-wider bg-white shadow-sm"
+                        >
+                          <Plus size={20} strokeWidth={3} /> Tambah Masukan Barang Lain
+                        </button>
+                    )}
                   </div>
                 </form>
               </div>

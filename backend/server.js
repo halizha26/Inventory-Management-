@@ -10,7 +10,10 @@ const productRouter = require('./routes/ProductRouter');
 const stockRouter = require('./routes/StockRouter');
 const reportRouter = require('./routes/ReportRouter');
 const exportRouter = require('./routes/ExportRouter');
-const exchangeRateRoute = require('./routes/exchangeRateRoute');
+const salesOrderRoutes = require('./routes/salesOrderRoutes');
+
+// 👇 PERBAIKAN: Menggunakan file exchangeRateRoutes.js yang baru kita buat
+const exchangeRateRoutes = require('./routes/exchangeRateRoutes');
 
 // Import Router Notifikasi & Kategori
 const notificationRouter = require('./routes/NotificationRouter');
@@ -61,7 +64,11 @@ app.use('/api/products', productRouter);
 app.use('/api/stock', stockRouter);
 app.use('/api/reports', reportRouter);
 app.use('/api/export', exportRouter);
-app.use('/api/exchange-rate', exchangeRateRoute);
+app.use('/api/sales-orders', salesOrderRoutes);
+
+// 👇 PERBAIKAN: Menggunakan endpoint '/api/exchange-rates' (Plural, sesuai dengan service frontend)
+app.use('/api/exchange-rates', exchangeRateRoutes);
+
 app.use('/api/notifications', notificationRouter);
 app.use('/api/categories', categoryRouter);
 

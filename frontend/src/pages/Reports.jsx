@@ -5,42 +5,69 @@ import {
 } from 'recharts';
 import { FileDown, FileText, Wallet, Package, AlertTriangle, XCircle, Calendar, TrendingUp } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom'; // 👈 Tambahan untuk navigasi
 
 import Button from '../components/common/Button';
 import reportService from '../services/reportService';
+import productService from '../services/productService'; // 👈 Tambahan untuk sinkronisasi angka
+
+const API_BASE_URL = import.meta.env.REACT_APP_API_URL || 'http://localhost:3000/api';
 
 const Reports = () => {
+  const navigate = useNavigate(); // Inisialisasi navigasi
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // State untuk konversi Multi-Mata Uang
   const [exchangeRate, setExchangeRate] = useState(15500);
   const [rateSource, setRateSource] = useState('Default_System');
 
-  // State untuk detail kategori
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryDetailData, setCategoryDetailData] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // 👈 State baru untuk angka sinkron alert cards
+  const [alertCounts, setAlertCounts] = useState({ low: 0, out: 0 });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Mengambil data summary dari API lama, dan mengambil Kurs dari API Settings TERBARU
-        const [summaryData, rateResponse] = await Promise.all([
-            reportService.getSummary(),
-            fetch("http://localhost:3000/api/settings").then(res => res.json()).catch(() => null)
+        // Mengambil data summary, pengaturan Kurs, dan data produk secara paralel
+        const [summaryData, rateResponse, productsData] = await Promise.all([
+          reportService.getSummary(),
+          fetch(`${API_BASE_URL}/settings`).then(res => res.ok ? res.json() : null).catch(() => null),
+          productService.getAll().catch(() => []) // Fetch data produk untuk filter
         ]);
 
         setSummary(summaryData);
 
-        // Jika berhasil mengambil data dari database pengaturan global kita
         if (rateResponse && rateResponse.usdRate) {
-            setExchangeRate(rateResponse.usdRate);
-            setRateSource('Bank Indonesia (JISDOR)'); 
+          setExchangeRate(rateResponse.usdRate);
+          setRateSource('Bank Indonesia (JISDOR)'); 
         }
+
+        // 👇 LOGIKA SINKRONISASI ANGKA KARTU ALERT 👇
+        const allProducts = productsData?.products || productsData || [];
+        let lowCount = 0;
+        let outCount = 0;
+
+        allProducts.forEach(p => {
+          const categoryName = p.category ? p.category.toLowerCase() : '';
+          const isTargetCategory = categoryName.includes('logistik material') || categoryName.includes('learning material');
+          
+          if (isTargetCategory) {
+            if (p.quantity === 0) {
+              outCount++;
+            } else if (p.quantity <= 25) {
+              lowCount++;
+            }
+          }
+        });
+
+        setAlertCounts({ low: lowCount, out: outCount });
+
       } catch (error) {
-        console.error(error);
+        console.error("Error fetching report summary:", error);
         toast.error('Gagal memuat data laporan');
       } finally {
         setLoading(false);
@@ -52,7 +79,7 @@ const Reports = () => {
   const handleDownload = async (type) => {
     try {
       toast.loading(`Menyiapkan ${type.toUpperCase()}...`, { id: 'download' });
-      let blob = type === 'pdf' ? await reportService.downloadPDF() : await reportService.downloadExcel();
+      const blob = type === 'pdf' ? await reportService.downloadPDF() : await reportService.downloadExcel();
       
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -60,27 +87,33 @@ const Reports = () => {
       link.setAttribute('download', `Laporan_Inventaris.${type === 'excel' ? 'xlsx' : 'pdf'}`);
       document.body.appendChild(link);
       link.click();
-      link.parentNode.removeChild(link);
+      
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
       toast.success('Download selesai', { id: 'download' });
     } catch (error) {
+      console.error(`Error downloading ${type}:`, error);
       toast.error('Download gagal', { id: 'download' });
     }
   };
 
   const handlePieClick = async (data) => {
-    const categoryName = data.name;
+    const categoryName = data?.name || data?.payload?.name;
+    if (!categoryName) return;
+
     setSelectedCategory(categoryName);
     setDetailLoading(true);
     
     try {
       const response = await reportService.getCategoryDetail(categoryName);
-      setCategoryDetailData(response);
+      setCategoryDetailData(response || []);
       
       setTimeout(() => {
         document.getElementById('detail-section')?.scrollIntoView({ behavior: 'smooth' });
       }, 300);
     } catch (error) {
-      console.error("Error ambil detail:", error);
+      console.error("Error ambil detail kategori:", error);
       toast.error('Gagal mengambil detail kategori');
     } finally {
       setDetailLoading(false);
@@ -90,7 +123,8 @@ const Reports = () => {
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
   const CustomBarTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
+    if (active && payload && payload.length > 0) {
+      const itemData = payload[0];
       return (
         <div className="bg-white/95 backdrop-blur-md border-2 border-slate-100 p-4 rounded-2xl shadow-xl">
           <p className="text-slate-900 font-black text-sm uppercase tracking-wider mb-3 pb-2 border-b border-slate-100">
@@ -100,13 +134,13 @@ const Reports = () => {
             <div className="flex justify-between items-end gap-6">
               <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Total Stok</span>
               <span className="text-blue-600 font-black text-xl leading-none">
-                {payload[0].value} <span className="text-[10px] text-slate-400 uppercase">Unit</span>
+                {itemData.value} <span className="text-[10px] text-slate-400 uppercase">Unit</span>
               </span>
             </div>
             <div className="flex justify-between items-end gap-6 mt-1">
               <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Periode</span>
               <span className="text-emerald-600 font-bold text-xs uppercase tracking-widest flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-md">
-                <Calendar size={12} /> {payload[0].payload.bulan || 'N/A'}
+                <Calendar size={12} /> {itemData.payload?.bulan || 'N/A'}
               </span>
             </div>
           </div>
@@ -127,10 +161,9 @@ const Reports = () => {
 
   const pieData = summary?.categoryStats?.map(item => ({
       name: item._id || 'Uncategorized',
-      value: item.count
+      value: item.count || 0
   })) || [];
 
-  // LOGIKA KONVERSI MULTI-MATA UANG
   const totalIDR = Number(summary?.totalStoreValueIDR || 0);
   const totalUSD = Number(summary?.totalStoreValueUSD || 0);
   const globalValuationIDR = totalIDR + (totalUSD * exchangeRate);
@@ -144,7 +177,7 @@ const Reports = () => {
           <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Ringkasan performa inventaris sistem Invento</p>
         </div>
         <div className="flex gap-3">
-             <Button variant="secondary" onClick={() => handleDownload('pdf')} className="flex items-center gap-2 font-bold shadow-sm">
+            <Button variant="secondary" onClick={() => handleDownload('pdf')} className="flex items-center gap-2 font-bold shadow-sm">
                 <FileText size={18} /> Export PDF
             </Button>
             <Button variant="secondary" onClick={() => handleDownload('excel')} className="flex items-center gap-2 font-bold shadow-sm">
@@ -155,7 +188,6 @@ const Reports = () => {
 
       {/* KARTU GRAND TOTAL (Estimasi Global) */}
       <div className="bg-gradient-to-br from-indigo-50 to-white border-2 border-dashed border-indigo-200 p-8 rounded-[32px] shadow-sm w-full relative overflow-hidden group">
-          {/* Dekorasi Visual Background */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-100/50 rounded-full mix-blend-multiply filter blur-3xl group-hover:opacity-70 transition-opacity duration-700 pointer-events-none -mr-10 -mt-20"></div>
           
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -170,7 +202,6 @@ const Reports = () => {
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(globalValuationIDR)}
                   </div>
                   
-                  {/* Badge Transparansi Informasi Kurs */}
                   <div className="mt-5 flex flex-wrap items-center gap-3">
                       <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/80 px-3 py-1.5 rounded-lg uppercase tracking-wider">
                           *Kurs Aktif: 1 USD = Rp {exchangeRate.toLocaleString('id-ID')}
@@ -183,14 +214,16 @@ const Reports = () => {
           </div>
       </div>
 
-      {/* KPI CARDS (Buku Terpisah) */}
+      {/* KPI CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-[24px] border-2 border-slate-100 shadow-sm transition-all hover:shadow-md hover:border-emerald-100">
             <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Wallet size={20}/></div>
                 <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest">Nilai Inventaris (IDR)</h3>
             </div>
-            <p className="text-3xl font-black text-slate-900">Rp {totalIDR.toLocaleString('id-ID')}</p>
+            <p className="text-3xl font-black text-slate-900">
+                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totalIDR)}
+            </p>
         </div>
 
         <div className="bg-white p-6 rounded-[24px] border-2 border-slate-100 shadow-sm transition-all hover:shadow-md hover:border-blue-100">
@@ -198,7 +231,9 @@ const Reports = () => {
                 <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Wallet size={20}/></div>
                 <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest">Nilai Inventaris (USD)</h3>
             </div>
-            <p className="text-3xl font-black text-slate-900">$ {totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            <p className="text-3xl font-black text-slate-900">
+                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalUSD)}
+            </p>
         </div>
 
         <div className="bg-white p-6 rounded-[24px] border-2 border-slate-100 shadow-sm transition-all hover:shadow-md">
@@ -210,21 +245,27 @@ const Reports = () => {
         </div>
       </div>
 
-      {/* ALERT CARDS */}
+      {/* 👇 ALERT CARDS (DIUBAH MENJADI TOMBOL KLIK) 👇 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-[24px] border-2 border-amber-100 shadow-sm flex items-center justify-between">
+        <div 
+          onClick={() => navigate('/low-stock')}
+          className="bg-white p-6 rounded-[24px] border-2 border-amber-100 shadow-sm flex items-center justify-between cursor-pointer hover:border-amber-300 hover:shadow-md hover:scale-[1.02] transition-all active:scale-95 group"
+        >
             <div>
-                <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest">Stok Menipis</h3>
-                <p className="text-3xl font-black text-amber-600 mt-1">{summary?.lowStockCount || 0}</p>
+                <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest group-hover:text-amber-600 transition-colors">Stok Menipis</h3>
+                <p className="text-3xl font-black text-amber-600 mt-1">{alertCounts.low}</p>
             </div>
-            <AlertTriangle size={48} className="text-amber-200" />
+            <AlertTriangle size={48} className="text-amber-200 group-hover:text-amber-400 transition-colors" />
         </div>
-        <div className="bg-white p-6 rounded-[24px] border-2 border-red-100 shadow-sm flex items-center justify-between">
+        <div 
+          onClick={() => navigate('/low-stock')}
+          className="bg-white p-6 rounded-[24px] border-2 border-red-100 shadow-sm flex items-center justify-between cursor-pointer hover:border-red-300 hover:shadow-md hover:scale-[1.02] transition-all active:scale-95 group"
+        >
             <div>
-                <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest">Stok Habis</h3>
-                <p className="text-3xl font-black text-red-600 mt-1">{summary?.outOfStock || 0}</p>
+                <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest group-hover:text-red-600 transition-colors">Stok Habis</h3>
+                <p className="text-3xl font-black text-red-600 mt-1">{alertCounts.out}</p>
             </div>
-            <XCircle size={48} className="text-red-200" />
+            <XCircle size={48} className="text-red-200 group-hover:text-red-400 transition-colors" />
         </div>
       </div>
 
@@ -290,7 +331,7 @@ const Reports = () => {
           </div>
       </div>
 
-      {/* 📈 SECTION BAR CHART DETAIL (LIGHT MODE) */}
+      {/* SECTION BAR CHART DETAIL */}
       {selectedCategory && (
         <div id="detail-section" className="bg-white p-8 md:p-12 rounded-[40px] border-2 border-slate-100 shadow-sm animate-in slide-in-from-bottom-5 duration-500 mt-10">
             <div className="flex justify-between items-center mb-8">

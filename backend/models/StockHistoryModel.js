@@ -22,7 +22,7 @@ const stockHistorySchema = new mongoose.Schema(
             required: true,
         },
         
-        // 👇 TAMBAHAN BARU: Kolom Satuan (Unit) 👇
+        // 👇 Kolom Satuan (Unit) 👇
         unit: {
             type: String,
             enum: ["Pcs", "Paket"],
@@ -40,7 +40,20 @@ const stockHistorySchema = new mongoose.Schema(
         },
         currency: {
             type: String,
+            enum: ["IDR", "USD"], // Ditambahkan perlindungan enum agar data konsisten
             default: 'IDR', 
+        },
+        
+        // 👇 TAMBAHAN BARU: Snapshot Kurs & Hasil Konversi 👇
+        exchangeRateSnapshot: {
+            type: Number,
+            required: false, // Tidak required agar data lama di database tidak error
+            default: null, 
+        },
+        convertedTotalCost: {
+            type: Number,
+            required: false,
+            default: null,
         },
         // -----------------------------
         
